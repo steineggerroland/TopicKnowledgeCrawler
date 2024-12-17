@@ -1,0 +1,23 @@
+{
+  "valid_feed": {
+    "entries": [
+      {
+        "title": "Test Article 1",
+        "link": "https://example.com/test-1",
+        "summary": "This is a summary.",
+        "published": "2024-06-06T10:00:00Z"
+      }
+    ]
+  },
+  "missing_fields_feed": {
+    "entries": [
+      {
+        "content": [{"value": "Fallback content for missing summary"}],
+        "updated": "2024-06-06T12:00:00Z"
+      }
+    ]
+  },
+  "empty_feed": {
+    "entries": []
+  }
+}

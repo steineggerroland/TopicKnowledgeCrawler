@@ -1,0 +1,19 @@
+{
+  "sources": [
+    {
+      "name": "Martin Fowler Blog",
+      "type": "rss",
+      "url": "https://martinfowler.com/feed.atom"
+    },
+    {
+      "name": "innoQ Blog",
+      "type": "rss",
+      "url": "https://www.innoq.com/de/feed.atom"
+    },
+    {
+      "name": "IsItArch",
+      "type": "unknown",
+      "url": "https://isitarch.icu/unknown"
+    }
+  ]
+}
