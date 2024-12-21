@@ -1,9 +1,11 @@
-import os
 import json
-import pytest
+import os
 import shutil
 from unittest.mock import patch
-from src.summarizer import process_raw_data, load_summary_history, save_summary_history
+
+import pytest
+
+from src.crawler.summarizer import process_raw_data, load_summary_history, save_summary_history
 
 RAW_DIR = "tests/fixtures/raw/"
 PROCESSED_DIR = "tests/fixtures/processed/"
@@ -52,7 +54,7 @@ def setup_test_environment():
         os.remove(SUMMARY_HISTORY_FILE)
 
 
-@patch("src.summarizer.summarize_text")
+@patch("src.crawler.summarizer.summarize_text")
 def test_process_all_raw_files(mock_summarize_text, setup_test_environment):
     """Test that all raw files are processed correctly and saved."""
     # Mock the OpenAI API response
@@ -78,6 +80,7 @@ def test_process_all_raw_files(mock_summarize_text, setup_test_environment):
             assert "summary_short" in data
             assert "summary_long" in data
 
+
 def test_summary_history_update(setup_test_environment):
     """Test that the summary history file is updated correctly."""
     test_history_file = SUMMARY_HISTORY_FILE
@@ -101,7 +104,8 @@ def test_summary_history_update(setup_test_environment):
     assert "article_1" in updated_history
     assert updated_history["article_1"]["summary_short"] == "Mock short summary"
 
-@patch("src.summarizer.summarize_text")
+
+@patch("src.crawler.summarizer.summarize_text")
 def test_changes_detection(mock_summarize_text, setup_test_environment):
     """Test that changes in text trigger the 'changes' summary."""
     # Initial raw data

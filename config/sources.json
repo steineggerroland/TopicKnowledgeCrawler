@@ -11,9 +11,44 @@
       "url": "https://www.innoq.com/de/feed.atom"
     },
     {
-      "name": "IsItArch",
-      "type": "unknown",
-      "url": "https://isitarch.icu/unknown"
+      "name": "Eberhard Wolff's Blog",
+      "type": "rss",
+      "url": "https://ewolff.com/feed.xml"
+    },
+    {
+      "name": "Isaac Adams@medium",
+      "type": "rss",
+      "url": "https://medium.com/@isaac.adams/feed"
+    },
+    {
+      "name": "DZone",
+      "type": "rss",
+      "url": "https://feeds.dzone.com/home"
+    },
+    {
+      "name": "Reddit",
+      "type": "rss",
+      "url": "https://www.reddit.com/r/softwarearchitecture/.rss"
+    },
+    {
+      "name": "Tag: Software Architecture@medium",
+      "type": "html",
+      "url": "https://medium.com/tag/software-architecture/archive"
+    },
+    {
+      "name": "Software Engineering Daily",
+      "type": "rss+podcast",
+      "url": "https://softwareengineeringdaily.com/feed/podcast/"
+    },
+    {
+      "name": "Coding Blocks",
+      "type": "rss+podcast",
+      "url": "https://www.codingblocks.net/feed/podcast/"
+    },
+    {
+      "name": "Software Architektur im Stream",
+      "type": "rss+podcast",
+      "url": "https://1evriw.podcaster.de/software-architektur-im-stream.rss"
     }
   ]
 }

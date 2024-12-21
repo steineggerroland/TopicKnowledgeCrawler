@@ -1,5 +1,7 @@
-import feedparser
 import hashlib
+
+import feedparser
+
 
 def generate_id(entry):
     """
@@ -10,6 +12,7 @@ def generate_id(entry):
     summary = str(getattr(entry, "summary", "") or "")
     content = link or title or summary or ""
     return hashlib.sha256(content.encode()).hexdigest()
+
 
 def extract_summary(entry):
     """
@@ -24,6 +27,7 @@ def extract_summary(entry):
         elif isinstance(entry.content, str):
             return entry.content
     return None
+
 
 def fetch_rss_feed(url):
     """

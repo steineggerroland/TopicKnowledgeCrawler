@@ -12,7 +12,11 @@
   "missing_fields_feed": {
     "entries": [
       {
-        "content": [{"value": "Fallback content for missing summary"}],
+        "content": [
+          {
+            "value": "Fallback content for missing summary"
+          }
+        ],
         "updated": "2024-06-06T12:00:00Z"
       }
     ]

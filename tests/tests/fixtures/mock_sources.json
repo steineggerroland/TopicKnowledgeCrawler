@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "name": "Test RSS Source",
+      "type": "rss",
+      "url": "https://example.com/mock-rss"
+    },
+    {
+      "name": "Test HTML Source",
+      "type": "html",
+      "url": "https://example.com/mock-html"
+    }
+  ]
+}
