@@ -1,13 +1,13 @@
 import hashlib
 import json
 import os
-import re
 from datetime import datetime
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
 from src.crawler.utils.logger import logger
+from src.crawler.utils.sanitize import clean_json_response
 
 load_dotenv()
 
@@ -34,14 +34,6 @@ def calculate_hash(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def clean_json_response(raw_content):
-    """
-    Cleans the raw content of a response to ensure it's a valid JSON string.
-    Handles cases where the response is encapsulated in a code block.
-    """
-    # Remove triple backticks or any surrounding code block markers
-    cleaned_content = re.sub(r"^```(?:json)?\n?|\n?```$", "", raw_content.strip())
-    return cleaned_content
 
 
 def summarize_article_json(text, old_text=None):

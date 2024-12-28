@@ -4,7 +4,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
-def fetch_html_content(url):
+def fetch_html_content(url, source):
     if 'medium.com' in url:
         return fetch_html_articles(url)
 
