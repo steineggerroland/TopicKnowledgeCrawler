@@ -1,6 +1,15 @@
 import hashlib
+import json
+import logging
 
 import feedparser
+import requests
+import trafilatura
+
+from src.crawler.fetchers.html_fetcher import extract_article_content
+
+# Initialize logger
+logger = logging.getLogger(__name__)
 
 
 def generate_id(entry):
@@ -9,18 +18,16 @@ def generate_id(entry):
     """
     link = str(getattr(entry, "link", "") or "")
     title = str(getattr(entry, "title", "") or "")
-    summary = str(getattr(entry, "summary", "") or "")
+    summary = str(getattr(entry, "summary", "") or getattr(entry, "content", "") or getattr(entry, "description", "") or "")
     content = link or title or summary or ""
     return hashlib.sha256(content.encode()).hexdigest()
 
 
-def extract_summary(entry):
+def extract_content(entry):
     """
     Extracts the summary of an entry, handling both content as string and content arrays.
     """
-    if hasattr(entry, "summary") and entry.summary:
-        return entry.summary
-    elif hasattr(entry, "content") and entry.content:
+    if hasattr(entry, "content") and entry.content:
         # Handle content as array or string
         if isinstance(entry.content, list) and "value" in entry.content[0]:
             return entry.content[0]["value"]
@@ -37,13 +44,29 @@ def fetch_rss_feed(url):
     entries = []
 
     for entry in feed.entries:
+        # Extract summary or description
+        content = extract_content(entry)
+        link = getattr(entry, "link", None)
+
+        if not content and link:
+            entry_data = extract_article_content(link)
+            if entry_data:
+                entries.append(entry_data)
+                continue
+        elif not content:
+            content = getattr(entry, "summary", None) or getattr(entry, "description", None)
+
+        # Default case if full article fetch is not needed
         entry_data = {
             "title": getattr(entry, "title", None),
-            "link": getattr(entry, "link", None),
-            "summary": extract_summary(entry),
-            "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None),
+            "link": link,
+            "summary": content,
+            "author": str(getattr(entry, "author", None)),
+            "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None) or getattr(entry, "pubDate", None),
             "updatedAt": getattr(entry, "updated", None),
             "id": generate_id(entry)
         }
         entries.append(entry_data)
+
     return entries
+
