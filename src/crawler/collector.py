@@ -1,6 +1,6 @@
 import json
 import os
-from src.crawler.fetchers.html_fetcher import fetch_html_content
+from src.crawler.fetchers.html_fetcher import HtmlFetcher
 from src.crawler.fetchers.rss_fetcher import fetch_rss_feed
 from src.crawler.utils.logger import logger
 from src.crawler.utils.sanitize import sanitize_string
@@ -36,7 +36,7 @@ def process_source(source):
         if source_type == "rss" or source_type == "rss+podcast":
             entries = fetch_rss_feed(url)
         elif source_type == "html":
-            entries = fetch_html_content(url, source)
+            entries = HtmlFetcher(source).fetch()
         else:
             logger.warning("No fetcher available for source type: %s", source_type)
             return
@@ -64,9 +64,9 @@ if __name__ == "__main__":
     analyzer = SourceAnalyzer()
 
     for source in sources:
-        if "type" not in source or (source["type"] == "html" and "selectors" not in source):
+        if "type" not in source or (source["type"] == "html" and "configuration" not in source):
             logger.info("Analyzing new source: %s", source["url"])
             updated_source = analyzer.analyze_source(source)
             sources[sources.index(source)] = updated_source
             save_sources(sources)
-        #process_source(source)
+        process_source(source)
