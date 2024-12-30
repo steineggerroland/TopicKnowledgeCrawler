@@ -27,7 +27,7 @@ class SourceAnalyzer:
                 source["type"] = "html"
                 if "selectors" not in source:
                     logger.info("Performing detailed analysis for HTML source: %s", url)
-                    source["selectors"] = self.llm_analyzer.analyze_html_structure(url)
+                    source["configuration"] = self.llm_analyzer.analyze_html_structure(url)["configuration"]
             else:
                 raise ValueError(f"Unknown content type: {content_type}")
 

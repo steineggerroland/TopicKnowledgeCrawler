@@ -1,231 +1,246 @@
 import json
-import time
-from typing import Any
-
 import os
-from dotenv import load_dotenv
+from typing import Any, Dict, List
+from urllib.parse import urljoin
+
 import requests
 from bs4 import BeautifulSoup
-
+from dotenv import load_dotenv
+from fuzzywuzzy import fuzz
 from openai import OpenAI
+from trafilatura import extract
 
+from src.crawler.utils.logger import logger
 from src.crawler.utils.sanitize import clean_json_response
 
+# Load OpenAI API key
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
+
 
 class LlmBasedSourceAnalyzer:
     """
     Uses an LLM to recursively analyze HTML pages, following referrer selectors when needed.
     """
-    def analyze_html_structure(self, url, max_depth=3):
-        """
-        Recursively analyzes the HTML structure of a webpage and follows referrer selectors.
-        Returns a dict that can be used to extract article information from the webpage.
-        """
-        # Fetch the HTML content of the current URL
-        html = self.fetch_html(url)
-        prompt = self.create_main_prompt(html.text)
 
-        # Query the LLM to analyze the current page
-        response = self.query_llm(prompt)
-        cleaned_response = clean_json_response(response)
+    def analyze_html_structure(self, url: str) -> Dict[str, Any]:
+        """
+        Analyzes the HTML structure and identifies the configuration for parsing articles.
+        """
+        html = self.fetch_html(url)
+        logger.info(f"Asking GPT to analyze {url}")
+
+        # Use GPT to analyze the main page
+        analysis = self.analyze_articles_page(html)
 
         try:
-            analysis = json.loads(cleaned_response)
 
             if not analysis.get("articles_found"):
-                raise Exception("Website %s seems not to contain any articles" %(url))
-            if not analysis.get("article_selector") or not analysis.get("articles"):
-                raise Exception("Answer of LLM for URL %s seems to be bogus: %s" %(url, analysis))
+                raise Exception(f"Website {url} does not contain articles.")
 
-            parser_configuration = dict()
-            parser_configuration['article_selector'] = analysis["article_selector"]
+            if not analysis.get("article_selector"):
+                raise Exception(f"Bogus response from GPT for URL {url}: {analysis}")
 
-            expected_selectors = ["title_selector", "content_selector", "link_selector"]
+            logger.info(f"GPT identified articles on {url}. Building configuration.")
+            parser_config = {
+                "configuration": {
+                    "article_selector": analysis["article_selector"]
+                }
+            }
 
-            article = analysis.get("articles")
-            parser_configuration['articles'] = {}
-            for selector in article:
-                if selector in expected_selectors:
-                    parser_configuration['articles'][selector] = article[selector]
-                    expected_selectors.remove(selector)
+            if not analysis.get("title_selector"):
+                raise Exception(f"No title_selector found for URL {url}: {analysis}")
 
-            if any(expected_selectors):
-                parser_configuration['articles']['referrers'] = []
-                soup = BeautifulSoup(html.content, "html.parser")
-                first_article = soup.find_all(analysis.get("article_selector"))[0]
-                for referrer_selector in first_article.find_all(article.get("referrer_selectors")):
-                    referred_url = extract_url(first_article, referrer_selector)
-                    visited_urls = set(url)
-                    sub_analysis = self._recursive_analyze(referred_url, visited_urls, max_depth, expected_selectors)
-                    if sub_analysis:
-                        sub_analysis["selector"] = referrer_selector
-                        parser_configuration['articles']['referrers'].append(sub_analysis)
-                    if not any(expected_selectors):
-                        break
+            # Process main page links to identify the main article page
+            soup = BeautifulSoup(html.content, "html.parser")
+            articles_html = soup.select(analysis["article_selector"], limit=4)
+            first_article = articles_html.pop()
+            title = first_article.select_one(analysis["title_selector"]).text.strip()
 
-            if any(expected_selectors):
-                raise Exception("Could not find selectors for all article attributes. Missing selectors: %s" %(expected_selectors))
+            # Handle main page link identification
+            logger.info("Finding the main page for the first article.")
+            main_page_info = self.identify_main_page(
+                url=url, article_html=first_article.decode_contents(), representative_title=title,
+                other_article_html_examples=list(map(lambda a: a.decode_contents(), articles_html))
+            )
+            if main_page_info:
+                parser_config["configuration"]["main_page_anchor_selector"] = main_page_info["anchor_selector"]
+
+            return parser_config
+
         except json.JSONDecodeError:
-            raise Exception("Failed to decode LLM response for URL: %s" % url)
+            raise Exception(f"Failed to decode GPT response for URL: {url}")
         except Exception as e:
-            raise Exception("Failed to analyze the HTML structure of %s" %(url)) from e
+            raise Exception(f"Failed to analyze HTML structure for {url}: {str(e)}") from e
 
-        return analysis
-    def _recursive_analyze(self, url, visited_urls, depth_remaining, expected_selectors) -> dict[Any, Any] | None:
-        """
-        Helper method to perform the recursive analysis.
-        Recursively follows referrer selectors to extract missing information.
-        """
-        if depth_remaining <= 0 or url in visited_urls:
-            return None  # Stop recursion if max depth is reached or URL already visited
-
-        visited_urls.add(url)
-
-        # Fetch the HTML content of the referrer page
-        html = self.fetch_html(url)
-        soup = BeautifulSoup(html.content, "html.parser")
-
-        # Create the prompt for analyzing the referrer page
-        title_missing = "title_selector" in expected_selectors
-        content_missing = "content_selector" in expected_selectors
-        link_missing = "link_selector" in expected_selectors
-
-        prompt = self.create_article_prompt(
-            html=html.text,
-            title_missing=title_missing,
-            content_missing=content_missing,
-            link_missing=link_missing,
-        )
-
-        # Query the LLM for analysis
-        response = self.query_llm(prompt)
+    def analyze_articles_page(self, html):
+        prompt = self.create_main_prompt(html.text)
+        response = self.query_llm(prompt, role="assistant", model='gpt-4o-mini')
         cleaned_response = clean_json_response(response)
+        analysis = json.loads(cleaned_response)
+        return analysis
 
-        try:
-            analysis = json.loads(cleaned_response)
+    def identify_main_page(self, url: str, article_html: str, representative_title: str,
+                           other_article_html_examples: List[str]) -> Dict[
+        str, Any]:
+        """
+        Identifies the main page of an article by following links and analyzing content with trafilatura.
+        """
+        soup = BeautifulSoup(article_html, "html.parser")
+        links = soup.find_all("a", href=True)
 
-            # Check for new selectors and update the expected selectors list
-            new_data = {}
-            for key in list(expected_selectors):
-                if key in analysis:
-                    new_data[key] = analysis[key]
-                    expected_selectors.remove(key)
+        for link in links:
+            if link.text.strip() == "":
+                continue
+            href = link["href"]
+            full_url = urljoin(url, href)
+            logger.info(f"Checking link: {full_url}")
 
-            # If the referrer selectors exist, follow them recursively
-            if any(expected_selectors) and "referrer_selectors" in analysis:
-                for referrer_selector in analysis["referrer_selectors"]:
-                    link = extract_url(soup, referrer_selector)
-                    # Perform recursive analysis on each referrer link
-                    sub_analysis = self._recursive_analyze(
-                        url=link,
-                        visited_urls=visited_urls,
-                        depth_remaining=depth_remaining - 1,
-                        expected_selectors=expected_selectors,
-                    )
-                    if sub_analysis:
-                        sub_analysis["selector"] = referrer_selector
-                        new_data['referrers'].append(sub_analysis)
-                    if not any(expected_selectors):
-                        break
+            # Fetch content from the link
+            response = requests.get(full_url)
+            if response.status_code != 200:
+                continue
 
-            return new_data if new_data else None
-        except json.JSONDecodeError:
-            raise Exception("Failed to decode LLM response for URL: %s" % url)
-        except Exception as e:
-            raise Exception(f"Error during recursive analysis of {url}: {str(e)}")
+            # Extract content with trafilatura
+            json_extraction = extract(response.text, include_formatting=True, include_links=True, include_images=True,
+                                      include_tables=True, output_format='json', with_metadata=True)
+            extracted_content = json.loads(json_extraction)
+            if not extracted_content or "title" not in extracted_content:
+                continue
+            page_title = extracted_content["title"]
+            if self.titles_are_similar(representative_title, page_title):
+                # Use GPT to refine the anchor selector
+                logger.info(f"Main page identified: {full_url}. Refining anchor selector.")
+                anchor_selector = self.refine_anchor_selector(known_article_block=article_html,
+                                                              known_anchor_html=link.decode_contents(),
+                                                              additional_blocks=other_article_html_examples)
+                return {"url": full_url, "anchor_selector": anchor_selector}
 
+        logger.warning("No main page identified.")
+        return {}
 
-    def fetch_html(self, url):
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            raise Exception(f"Failed to fetch HTML content. Status code: {response.status_code}")
-        return response
-
-    def create_main_prompt(self, html):
+    def create_main_prompt(self, html: str) -> str:
         """
         Create the LLM prompt for analyzing the main HTML structure.
         """
         return f"""
-        Du hilfst bei der Analyse eines HTML-Dokuments, damit ein HTML-Parser nach der Analyse eine HTML-Seite automatisiert verarbeiten kann. 
-        Der Parser wird per HTML-Selektor in python die notwendige Information extrahieren. Die HTML-Selektoren sollten möglichst reduziert und einfach formuliert sein.
-        Aus der HTML-Webseite sollen Artikel mit "Titel", "Inhalt" und einem "Link" extrahiert werden. 
-        Der Artikelinhalt könnte bereits auf dieser Seite vorhanden sein oder es wird eine Unterseite verlinkt, z. B. durch "Mehr lesen".
-        
-        Antworte im JSON-Format mit exakt folgendem JSON-Schema:
-        z.object({{
-            article_selector: z.string().optional().describe('Selector for all articles on the page used for iteration'),
-            articles: z.object({{
-              title_selector: z.string().optional().describe('Selector for the title of the article applied within the article selector'),
-              content_selector: z.string().optional().describe('Selector for the content of the article applied within the article selector'),
-              link_selector: z.string().optional().describe('Selector for the anchor having a "href" referring to THE article\'s page'),
-              referrer_selectors: z.array(z.string().optional().describe('Selector for an anchor having a "href" referring to a page where additional information on the article might be found')).optional().describe('Necessary if not all information on an article could be found on the page and, therefore, at least one selector is missing.')
-            }}).optional().describe('If the "article_selector" is present, this describes the handling within the articles'),
-            articles_found: z.boolean().describe('"true", if articles were found and the selector is set, else "false"')
-        }})
-        
-        Bitte füge die optionalen "*_selector" nur hinzu, wenn du dir sehr sicher bist, dass der Text des selektierten Elements das Attribute des Artikels vollständig repräsentiert.
-        Für die "referrer_selector" wird davon ausgegangen, dass genau ein "a" gefunden und gefolgt wird. Dieser Selektor sollte also möglichst präzise sein. Du solltest auch nur "referrer_selector" verwenden, bei denen du die fehlenden Attribute des Artikels vermutest.
+        You are assisting in analyzing an HTML document to help an automated HTML parser process the page.
+        The parser uses CSS selectors in Python to extract the necessary information.
 
-        Hier ist das HTML-Dokument:
+        The goal is to extract articles from the page. Each article has the following attributes:
+        - **Title:** The title of the article, which must be identified by a `title_selector`.
+        - **Article block:** The overall block of the article on the page, identified by an `article_selector`.
+
+        **Specific guidelines:**
+        1. Provide an `article_selector` to iterate over each article on the page.
+        2. Provide a `title_selector` to extract the title from within the article block.
+        3. Ensure the CSS selectors are short, simple, and concise.
+        4. Only include selectors when confident they fully represent the corresponding attribute.
+        5. Pseudo-class `:has(<selector>)` can be used to simplify selectors.
+
+        **Response Format:**
+        ```json
+        z.object({{
+            article_selector: z.string().describe('Selector for all articles on the page used for iteration'),
+            title_selector: z.string().describe('Selector for the title of the article applied within the article selector'),
+            articles_found: z.boolean().describe('"true" if articles were found, otherwise "false"')
+        }})
+        ```
+
+        Example scenarios:
+        1. If the articles are clearly defined blocks on the page, provide an `article_selector` to iterate over them.
+        2. Ensure the `title_selector` precisely identifies the title within the article block.
+        3. If no articles are found on the page, set `articles_found` to `false`.
+
+        Here is the HTML document:
         ```html
         {html}
         ```
         """
 
-    def create_article_prompt(self, html, title_missing, content_missing, link_missing):
+    def refine_anchor_selector(self, known_article_block: str, known_anchor_html: str,
+                               additional_blocks: List[str]) -> str:
         """
-        Create a specific prompt for analyzing a referrer page for a single article.
+        Uses GPT to refine the anchor selector for articles based on a known example and structurally similar blocks.
         """
-        return f"""
-                Du hilfst bei der Analyse eines HTML-Dokuments, damit ein HTML-Parser nach der Analyse eine HTML-Seite automatisiert verarbeiten kann. 
-                Der Parser wird per HTML-Selektor in python die notwendige Information extrahieren. Die HTML-Selektoren sollten möglichst reduziert und einfach formuliert sein.
-                Aus der HTML-Webseite sollen folgende Informationen des Artikels extrahiert werden:
-                {"* Titel" if title_missing else ""}
-                {"* Inhalt " if content_missing else ""}
-                {"* Link zur Artikelseite " if link_missing else ""}
-                Falls die gesuchten Inhalte nicht auf der Seite vorhanden sind, verweist sie möglicherweise zu weiteren relevanten Seiten, z. B. durch einen "Mehr lesen"-Link.
+        prompt = f"""
+You are assisting in analyzing an HTML block to determine the CSS selector for an anchor (`<a>` tag) linking to the main page of an article.
 
-                Antworte im JSON-Format mit exakt folgendem JSON-Schema:
-                z.object({{
-                  {"title_selector: z.string().optional().describe('Selector for the title of the article applied within the article selector')," if title_missing else ""}
-                  {"content_selector: z.string().optional().describe('Selector for the content of the article applied within the article selector')," if content_missing else ""}
-                  {"link_selector: z.string().optional().describe('Selector for the anchor having a 'href' referring to THE article\'s page')," if link_missing else ""}
-                  referrer_selectors: z.array(z.string().optional().describe('Selector for an anchor having a "href" referring to a page where additional information on the article might be found')).optional().describe('Necessary if not all information on an article could be found on the page and, therefore, at least one selector is missing.')
-                }})
-                
-                Bitte füge die optionalen JSON-Attribute für "selector" nur hinzu, wenn du dir recht sicher bist, dass der Text des selektierten Elements das Attribute des Artikels vollständig repräsentiert.
-                Für die "referrer_selector" wird davon ausgegangen, dass genau ein "a" gefunden und gefolgt wird. Dieser Selektor sollte also möglichst präzise sein. Du solltest auch nur "referrer_selector" verwenden, bei denen du die fehlenden Attribute des Artikels vermutest.  
+The goal is to find a **short and generic CSS selector** that targets only the `<a>` tag containing the article link.
 
-                Hier ist das HTML-Dokument:
-                ```html
-                {html}
-                ```
-                """
+### Key Guidelines:
+1. **Target Only `<a>`**: The selector must select the `<a>` tag linking to the main page of the article. It must not select any child elements (e.g., `<h2>` or `<h3>`).
+2. **Structural Elements**: Focus on structural tags such as `<h1>`, `<h2>`, `<h3>`, or semantic landmarks near the anchor. Use :has(<selector>) to select an anchor containing specific tags.
+3. **Avoid Specific Attributes**: Do not rely on `href` values, unique classes, or IDs. Instead, leverage structural relationships (e.g., `:has(<selector>)` or `>`, `~`).
+4. **Short and Concise**: The CSS selector must be as short and robust as possible, avoiding deeply nested paths.
 
-    def query_llm(self, prompt):
+### Example Context:
+Below is the known HTML block for an article preview. The anchor linking to the main page of the article has been identified.
+
+#### Known Example:
+```html
+{known_article_block}
+```
+The target anchor is: `{known_anchor_html}`
+
+Below are additional article blocks. Use them to generalize the selector.
+
+#### Additional Examples:
+{''.join([f"\n```html\n{block}\n```\n" for block in additional_blocks])}
+
+### Expected Answer:
+Answer in this exact JSON format:
+
+```json
+{{
+    "anchor_selector": "CSS_SELECTOR"
+}}
+```
+
+Replace CSS_SELECTOR with the appropriate CSS selector. The selector must:
+	•	Target only the <a> tag in the known example.
+	•	Work generically for structurally similar blocks.
+	•	Use structural relationships, not specific attributes.
+
+Validation Examples:
+
+	1.	Selector a > h2 is invalid because it targets the <h2>, not the <a> tag.
+	2.	Selector div > a is valid if it targets the <a> tag and works for all provided examples.
+	3.	Selector a:has(h2) is valid if the <a> contains an <h2>.
+"""
+        response = self.query_llm(prompt, role="assistant", model='gpt-4o-mini')
+        try:
+            result = json.loads(clean_json_response(response))
+            return result.get("anchor_selector", "")
+        except (json.JSONDecodeError, KeyError):
+            logger.error(f"Failed to refine anchor selector: {response}")
+            return ""
+
+    def fetch_html(self, url: str):
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            raise Exception(f"Failed to fetch HTML content. Status code: {response.status_code}")
+        return response
+
+    def query_llm(self, prompt: str, role: str = "user", model: str = "gpt-3.5-turbo") -> str:
         """
         Queries the LLM for analyzing the HTML.
         """
+        messages = [
+            {"role": "system",
+             "content": "You are an assistant helping analyze HTML documents for article extraction."},
+            {"role": role, "content": prompt}
+        ]
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}]
+            model=model,
+            messages=messages
         )
         raw_content = response.choices[0].message.content
-        print(raw_content)
-        time.sleep(60)
         return raw_content
 
-
-
-def extract_url(element, selector):
-    """
-    Extracts url using a given CSS selector on the given element.
-    """
-    a = element.find(selector)
-    return a["href"] if "href" in a.attrs else None
-
-if __name__ == "__main__":
-    print(LlmBasedSourceAnalyzer().create_main_prompt('***HTML-PLACEHOLDER***'))
+    def titles_are_similar(self, title1: str, title2: str) -> bool:
+        """
+        Compares two titles for similarity using fuzzy matching.
+        """
+        return fuzz.ratio(title1.lower(), title2.lower()) > 80

@@ -14,5 +14,5 @@ def clean_json_response(raw_content):
     Handles cases where the response is encapsulated in a code block.
     """
     # Remove triple backticks or any surrounding code block markers
-    cleaned_content = re.sub(r"^```(?:json)?\n?|\n?```$", "", raw_content.strip())
+    cleaned_content = re.sub(r"^(.(?<!```))*```(?:json)?\n?|\n?```((?!```).)*$", "", raw_content.strip(), flags=re.S)
     return cleaned_content

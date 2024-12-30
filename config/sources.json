@@ -33,7 +33,20 @@
     {
       "name": "Tag: Software Architecture@medium",
       "type": "html",
-      "url": "https://medium.com/tag/software-architecture/archive"
+      "url": "https://medium.com/tag/software-architecture/archive",
+      "configuration": {
+        "article_selector": "article",
+        "main_page_anchor_selector": "div > a:has(h2)"
+      }
+    },
+    {
+      "name": "Tag: DDD@medium",
+      "type": "html",
+      "url": "https://medium.com/tag/ddd/archive",
+      "configuration": {
+        "article_selector": "article",
+        "main_page_anchor_selector": "div > a:has(h2)"
+      }
     },
     {
       "name": "Software Engineering Daily",
