@@ -61,13 +61,25 @@ def summarize_article_json(text, old_text=None):
     {"Old Text: " + old_text if old_text else ""}
     """
 
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "You are a creative summarization assistant."},
-            {"role": "user", "content": prompt}
-        ]
-    )
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a creative summarization assistant."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+    except Exception as exception:
+        if 'context_length_exceeded' in str(exception):
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a creative summarization assistant."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+        else:
+            raise exception
 
     raw_content = response.choices[0].message.content
     cleaned_content = clean_json_response(raw_content)
@@ -102,22 +114,24 @@ def process_raw_data(input_path, output_path, history_file):
         entry.update(history[article_id])
     else:
         logger.info("Processing new or updated article: %s", article_id)
+        try:
+            # Generate JSON summary
+            summary_json = summarize_article_json(text_to_summarize, old_text=previous_text)
 
-        # Generate JSON summary
-        summary_json = summarize_article_json(text_to_summarize, old_text=previous_text)
-
-        if summary_json:
-            entry.update(summary_json)
-            history[article_id] = {
-                "hash": text_hash,
-                "summary_text": text_to_summarize,
-                "teaser": summary_json["teaser"],
-                "summary_long": summary_json["summary_long"],
-                "category": summary_json["category"],
-                "tags": summary_json["tags"],
-                "tone": summary_json["tone"],
-                "last_updated": datetime.now().isoformat()
-            }
+            if summary_json:
+                entry.update(summary_json)
+                history[article_id] = {
+                    "hash": text_hash,
+                    "summary_text": text_to_summarize,
+                    "teaser": summary_json["teaser"],
+                    "summary_long": summary_json["summary_long"],
+                    "category": summary_json["category"],
+                    "tags": summary_json["tags"],
+                    "tone": summary_json["tone"],
+                    "last_updated": datetime.now().isoformat()
+                }
+        except:
+            logger.error("Failed to summarize article: %s. Skipping summarization.", article_id)
 
     # Save updated article
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
