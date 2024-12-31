@@ -38,7 +38,7 @@ def calculate_hash(text):
 
 def summarize_article_json(text, old_text=None):
     """Summarizes the article into JSON format using OpenAI's GPT model."""
-    prompt = f"""
+    prompt = f'''
     You are a content creator who transforms educational content into engaging, motivating, and captivating summaries. Your task is to rewrite the following article in a way that:
     1. Provides a short teaser of no more than 200 characters to intrigue the reader.
     2. Summarizes the article in an engaging and motivating tone, keeping it concise but reflecting the unique style of the original content (e.g., humorous, critical, or light-hearted).
@@ -53,13 +53,13 @@ def summarize_article_json(text, old_text=None):
         "category": ["..."],
         "tags": ["...", "..."],
         "tone": ["..."]{"," if old_text else ""}
-        {"\"teaser\": \"...\"" if old_text else ""}
+        {'"teaser": "..."' if old_text else ""}
     }}
 
     Article Text: {text}
 
     {"Old Text: " + old_text if old_text else ""}
-    """
+    '''
 
     try:
         response = client.chat.completions.create(
