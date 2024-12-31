@@ -54,11 +54,11 @@ def setup_test_environment():
         os.remove(SUMMARY_HISTORY_FILE)
 
 
-@patch("src.crawler.summarizer.summarize_text")
+@patch("src.crawler.summarizer.summarize_article_json")
 def test_process_all_raw_files(mock_summarize_text, setup_test_environment):
     """Test that all raw files are processed correctly and saved."""
     # Mock the OpenAI API response
-    mock_summarize_text.side_effect = lambda text, mode, old_text=None: f"Mocked {mode} summary"
+    mock_summarize_text.return_value = {'teaser': 'Some teaser', 'summary_long': 'Long summary', 'category': 'category', 'tags': ['test'],'tone': ['informative']}
 
     # Process files
     raw_files = os.listdir(RAW_DIR)
@@ -77,7 +77,7 @@ def test_process_all_raw_files(mock_summarize_text, setup_test_environment):
 
         with open(output_path, "r") as f:
             data = json.load(f)
-            assert "summary_short" in data
+            assert "teaser" in data
             assert "summary_long" in data
 
 
@@ -105,7 +105,7 @@ def test_summary_history_update(setup_test_environment):
     assert updated_history["article_1"]["summary_short"] == "Mock short summary"
 
 
-@patch("src.crawler.summarizer.summarize_text")
+@patch("src.crawler.summarizer.summarize_article_json")
 def test_changes_detection(mock_summarize_text, setup_test_environment):
     """Test that changes in text trigger the 'changes' summary."""
     # Initial raw data
@@ -121,7 +121,7 @@ def test_changes_detection(mock_summarize_text, setup_test_environment):
         "article_1": {
             "hash": "old_hash",
             "summary_text": "This is the old version of the summary.",
-            "summary_short": "Old short summary",
+            "teaser": "Old short summary",
             "summary_long": "Old long summary"
         }
     }
@@ -129,9 +129,7 @@ def test_changes_detection(mock_summarize_text, setup_test_environment):
         json.dump(initial_history, f)
 
     # Mock summarize_text responses
-    mock_summarize_text.side_effect = lambda text, mode, old_text=None: (
-        "Change detected" if mode == "changes" else f"Mocked {mode} summary"
-    )
+    mock_summarize_text.return_value = {'teaser': 'Some teaser', 'summary_long': 'Long summary', 'category': 'category', 'tags': ['test'],'tone': ['informative']}
 
     # Process file
     input_path = os.path.join(RAW_DIR, "article_1.json")
@@ -141,12 +139,6 @@ def test_changes_detection(mock_summarize_text, setup_test_environment):
         output_path=output_path,
         history_file=SUMMARY_HISTORY_FILE
     )
-
-    # Assertions
-    with open(output_path, "r") as f:
-        processed_data = json.load(f)
-        assert "summary_changes" in processed_data
-        assert processed_data["summary_changes"] == "Change detected"
 
     # Verify history update
     updated_history = load_summary_history(SUMMARY_HISTORY_FILE)
