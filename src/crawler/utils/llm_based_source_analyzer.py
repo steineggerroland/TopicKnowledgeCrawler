@@ -17,7 +17,7 @@ from src.crawler.utils.sanitize import clean_json_response
 load_dotenv()
 openai_api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=openai_api_key)
-
+lb = '\n' # line break for f-string
 
 class LlmBasedSourceAnalyzer:
     """
@@ -187,7 +187,7 @@ The target anchor is: `{known_anchor_html}`
 Below are additional article blocks. Use them to generalize the selector.
 
 #### Additional Examples:
-{''.join([f"\n```html\n{block}\n```\n" for block in additional_blocks])}
+{''.join([f'{lb}```html{lb}{block}{lb}```{lb}' for block in additional_blocks])}
 
 ### Expected Answer:
 Answer in this exact JSON format:
