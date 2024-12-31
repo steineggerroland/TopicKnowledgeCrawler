@@ -1,11 +1,11 @@
 import json
 from datetime import datetime
 from hashlib import sha256
+from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup
 import trafilatura
-from urllib.parse import urljoin, urlparse
+from bs4 import BeautifulSoup
 
 from src.crawler.utils.logger import logger
 
@@ -33,7 +33,7 @@ def extract_article_content(url):
     Extract article content using trafilatura.
     """
     try:
-        html =  _fetch_html(url)
+        html = _fetch_html(url)
         # Extract article content and metadata
         result = trafilatura.extract(
             html,
@@ -142,4 +142,3 @@ class HtmlFetcher:
         except Exception as e:
             logger.error(f"Error processing article block: {e}")
             return None
-
