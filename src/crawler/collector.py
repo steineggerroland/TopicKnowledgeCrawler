@@ -43,16 +43,16 @@ def process_source(source):
 
         for entry in entries:
             entry["source_type"] = source_type
-            save_entry(name, entry)
+            save_entry(entry)
         logger.info("Saved %s entries", len(entries))
     except Exception as e:
         logger.error("Error processing source '%s': %s", name, str(e))
 
 
-def save_entry(source_name, entry):
+def save_entry(entry):
     """Saves an entry as a JSON file."""
     os.makedirs(DATA_DIR, exist_ok=True)
-    file_name = sanitize_string(f"{source_name}_{entry['id']}.json")
+    file_name = sanitize_string(f"{entry['id']}.json")
     file_path = os.path.join(DATA_DIR, file_name)
     with open(file_path, "w") as file:
         json.dump(entry, file, indent=2)
