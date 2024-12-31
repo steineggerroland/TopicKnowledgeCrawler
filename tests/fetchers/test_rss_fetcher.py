@@ -13,7 +13,7 @@ def mock_feed_with_entries():
         Mock(
             title="Test Article 1",
             link="https://example.com/test-1",
-            summary="This is a summary.",
+            content="This is a summary.",
             published="2024-06-06T10:00:00Z",
         )
     ]
