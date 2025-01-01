@@ -74,6 +74,6 @@ def fetch_rss_feed(url):
 def extract_author(entry):
     if hasattr(entry, "author"):
         auth_tag = getattr(entry, "author", None)
-        return auth_tag if type(auth_tag) is str else auth_tag['name'] if hasattr(auth_tag, "name") else str(auth_tag)
+        return auth_tag if type(auth_tag) is str else getattr(auth_tag, "name", None) if hasattr(auth_tag, "name") else str(auth_tag)
     return  getattr(entry, "creator", None) or getattr(entry, "itunes:author", None)
 
