@@ -61,7 +61,7 @@ def fetch_rss_feed(url):
             "title": getattr(entry, "title", None),
             "link": link,
             "summary": content,
-            "author": str(getattr(entry, "author", None)),
+            "author": extract_author(entry),
             "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None) or getattr(entry, "pubDate", None),
             "updatedAt": getattr(entry, "updated", None),
             "id": generate_id(entry)
@@ -69,4 +69,11 @@ def fetch_rss_feed(url):
         entries.append(entry_data)
 
     return entries
+
+
+def extract_author(entry):
+    if hasattr(entry, "author"):
+        auth_tag = getattr(entry, "author", None)
+        return auth_tag if type(auth_tag) is str else auth_tag['name'] if hasattr(auth_tag, "name") else str(auth_tag)
+    return  getattr(entry, "creator", None) or getattr(entry, "itunes:author", None)
 
