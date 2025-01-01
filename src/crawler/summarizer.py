@@ -113,7 +113,7 @@ def process_raw_data(input_path, output_path, history_file):
         logger.info("No changes detected for article: %s. Skipping summarization.", article_id)
         entry.update(history[article_id])
     else:
-        logger.info("Processing new or updated article: %s", article_id)
+        logger.info(f"Processing new or updated article: %s ({entry.get("title", "")})", article_id)
         try:
             # Generate JSON summary
             summary_json = summarize_article_json(text_to_summarize, old_text=previous_text)
