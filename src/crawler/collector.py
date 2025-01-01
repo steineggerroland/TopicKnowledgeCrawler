@@ -1,5 +1,9 @@
 import json
 import os
+import urllib.parse
+
+import tldextract
+
 from src.crawler.fetchers.html_fetcher import HtmlFetcher
 from src.crawler.fetchers.rss_fetcher import fetch_rss_feed
 from src.crawler.utils.logger import logger
@@ -26,9 +30,9 @@ def process_source(source):
     """
     Processes a single source based on its type.
     """
-    source_type = source.get("type")
-    name = source["name"]
-    url = source["url"]
+    source_type = str(source.get("type"))
+    name = str(source["name"])
+    url = str(source["url"])
 
     logger.info("Processing source: %s (%s)", name, source_type)
 
@@ -43,6 +47,7 @@ def process_source(source):
 
         for entry in entries:
             entry["source_type"] = source_type
+            entry["tld"] = tldextract.extract(url).registered_domain
             save_entry(entry)
         logger.info("Saved %s entries", len(entries))
     except Exception as e:
