@@ -31,6 +31,11 @@
       "url": "https://www.reddit.com/r/softwarearchitecture/.rss"
     },
     {
+      "name": "Planet Geek",
+      "type": "rss",
+      "url": "https://www.planetgeek.ch/feed"
+    },
+    {
       "name": "Tag: Software Architecture@medium",
       "type": "html",
       "url": "https://medium.com/tag/software-architecture/archive",
