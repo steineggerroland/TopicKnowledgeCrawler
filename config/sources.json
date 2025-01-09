@@ -21,6 +21,26 @@
       "url": "https://medium.com/@isaac.adams/feed"
     },
     {
+      "name": "Mirko Stocker@medium",
+      "type": "rss",
+      "url": "https://medium.com/@mstocker/feed"
+    },
+    {
+      "name": "Olaf Zimmermann@medium",
+      "type": "rss",
+      "url": "https://medium.com/@docsoc/feed"
+    },
+    {
+      "name": "Nick Tune@medium",
+      "type": "rss",
+      "url": "https://nicktune.medium.com/feed"
+    },
+    {
+      "name": "Anton Stöckl@medium",
+      "type": "rss",
+      "url": "https://medium.com/@TonyBologni/feed"
+    },
+    {
       "name": "DZone",
       "type": "rss",
       "url": "https://feeds.dzone.com/home"
