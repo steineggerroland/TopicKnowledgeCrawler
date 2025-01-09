@@ -1,7 +1,6 @@
 import json
 import os
 import urllib.parse
-
 import tldextract
 
 from src.crawler.fetchers.html_fetcher import HtmlFetcher
@@ -13,46 +12,45 @@ from src.crawler.utils.source_analyzer import SourceAnalyzer
 CONFIG_FILE = "config/sources.json"
 DATA_DIR = "data/raw"
 
-
 def load_sources():
     """Loads the sources configuration."""
     with open(CONFIG_FILE, "r") as file:
         return json.load(file)["sources"]
-
 
 def save_sources(sources):
     """Saves the updated sources configuration."""
     with open(CONFIG_FILE, "w") as file:
         json.dump({"sources": sources}, file, indent=2)
 
-
 def process_source(source):
-    """
-    Processes a single source based on its type.
-    """
-    source_type = str(source.get("type"))
-    name = str(source["name"])
-    url = str(source["url"])
+    """Processes a single source based on its type."""
+    source_type = source.get("type")
+    name = source["name"]
+    url = source["url"]
 
     logger.info("Processing source: %s (%s)", name, source_type)
 
+    fetcher_map = {
+        "rss": fetch_rss_feed,
+        "rss+podcast": fetch_rss_feed,
+        "html": lambda url: HtmlFetcher(source).fetch()
+    }
+
     try:
-        if source_type == "rss" or source_type == "rss+podcast":
-            entries = fetch_rss_feed(url)
-        elif source_type == "html":
-            entries = HtmlFetcher(source).fetch()
+        fetcher = fetcher_map.get(source_type)
+        if fetcher:
+            entries = fetcher(url)
+            for entry in entries:
+                entry.update({
+                    "source_type": source_type,
+                    "tld": tldextract.extract(url).registered_domain
+                })
+                save_entry(entry)
+            logger.info("Saved %s entries", len(entries))
         else:
             logger.warning("No fetcher available for source type: %s", source_type)
-            return
-
-        for entry in entries:
-            entry["source_type"] = source_type
-            entry["tld"] = tldextract.extract(url).registered_domain
-            save_entry(entry)
-        logger.info("Saved %s entries", len(entries))
     except Exception as e:
         logger.error("Error processing source '%s': %s", name, str(e))
-
 
 def save_entry(entry):
     """Saves an entry as a JSON file."""
@@ -62,7 +60,6 @@ def save_entry(entry):
     with open(file_path, "w") as file:
         json.dump(entry, file, indent=2)
     logger.debug("Saved entry: %s", file_path)
-
 
 if __name__ == "__main__":
     sources = load_sources()
