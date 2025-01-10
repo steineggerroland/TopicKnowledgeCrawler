@@ -1,10 +1,9 @@
 import json
 import os
-import urllib.parse
 import tldextract
 
 from src.crawler.fetchers.html_fetcher import HtmlFetcher
-from src.crawler.fetchers.rss_fetcher import fetch_rss_feed
+from src.crawler.fetchers.rss_fetcher import RssFetcher  # Updated import
 from src.crawler.utils.logger import logger
 from src.crawler.utils.sanitize import sanitize_string
 from src.crawler.utils.source_analyzer import SourceAnalyzer
@@ -31,15 +30,15 @@ def process_source(source):
     logger.info("Processing source: %s (%s)", name, source_type)
 
     fetcher_map = {
-        "rss": fetch_rss_feed,
-        "rss+podcast": fetch_rss_feed,
-        "html": lambda url: HtmlFetcher(source).fetch()
+        "rss": RssFetcher(source).fetch,
+        "rss+podcast": RssFetcher(source).fetch,
+        "html": HtmlFetcher(source).fetch
     }
 
     try:
         fetcher = fetcher_map.get(source_type)
         if fetcher:
-            entries = fetcher(url)
+            entries = fetcher()
             for entry in entries:
                 entry.update({
                     "source_type": source_type,
