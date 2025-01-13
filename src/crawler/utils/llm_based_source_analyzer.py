@@ -10,8 +10,11 @@ from fuzzywuzzy import fuzz
 from openai import OpenAI
 from trafilatura import extract
 
-from src.crawler.utils.logger import logger
+from src.crawler.utils.logger import getLogger
 from src.crawler.utils.sanitize import clean_json_response
+
+# Initialize logger
+logger = getLogger(__name__)
 
 # Load OpenAI API key
 load_dotenv()

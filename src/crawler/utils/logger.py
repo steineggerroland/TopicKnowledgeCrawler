@@ -11,7 +11,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] - %(message)s",
     handlers=[
         logging.StreamHandler(),  # Logs to console
-        logging.FileHandler("data/logs/summarizer.log")  # Logs to file
+        logging.FileHandler("data/logs/default.log")  # Logs to file
     ]
 )
-logger = logging.getLogger(__name__)
+getLogger = lambda name: logging.getLogger(name)

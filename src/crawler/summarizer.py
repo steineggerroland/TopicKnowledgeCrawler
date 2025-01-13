@@ -6,8 +6,11 @@ from datetime import datetime
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from src.crawler.utils.logger import logger
+from src.crawler.utils.logger import getLogger
 from src.crawler.utils.sanitize import clean_json_response
+
+# Initialize logger
+logger = getLogger(__name__)
 
 load_dotenv()
 
@@ -34,6 +37,12 @@ def calculate_hash(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def load_markdown_content(markdown_path):
+    """Loads the content of the Markdown file if it exists."""
+    if os.path.exists(markdown_path):
+        with open(markdown_path, "r", encoding="utf-8") as file:
+            return file.read()
+    return None
 
 
 def summarize_article_json(text, old_text=None):
@@ -95,6 +104,7 @@ def summarize_article_json(text, old_text=None):
         logger.error("Failed to decode JSON response: %s", e)
         return None
 
+
 def process_raw_data(input_path, output_path, history_file):
     """Processes a raw JSON file, generates summaries, and checks against history."""
     # Load history
@@ -104,8 +114,16 @@ def process_raw_data(input_path, output_path, history_file):
     with open(input_path, "r") as file:
         entry = json.load(file)
 
+    # Load Markdown content if available
+    markdown_path = input_path.replace(".json", ".md")
+    markdown_content = load_markdown_content(markdown_path)
+
+    if markdown_content:
+        text_to_summarize = markdown_content
+    else:
+        text_to_summarize = entry.get("summary", "") or entry.get("content", "")
+
     # Calculate text hash
-    text_to_summarize = entry.get("summary", "")
     text_hash = calculate_hash(text_to_summarize)
 
     # Check history for existing summaries
@@ -131,11 +149,11 @@ def process_raw_data(input_path, output_path, history_file):
                     "summary_long": summary_json["summary_long"],
                     "category": summary_json["category"],
                     "tags": summary_json["tags"],
-                    "tone": summary_json["tone"],
+                    "seriousness_rating": summary_json["seriousness_rating"],
                     "last_updated": datetime.now().isoformat()
                 }
-        except:
-            logger.error("Failed to summarize article: %s. Skipping summarization.", article_id)
+        except Exception as e:
+            logger.error("Failed to summarize article: %s. Skipping summarization: %s", (article_id, e))
 
     # Save updated article
     os.makedirs(os.path.dirname(output_path), exist_ok=True)

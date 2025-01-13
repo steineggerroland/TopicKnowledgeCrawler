@@ -1,7 +1,9 @@
 import requests
 from src.crawler.utils.llm_based_source_analyzer import LlmBasedSourceAnalyzer
-from src.crawler.utils.logger import logger
+from src.crawler.utils.logger import getLogger
 
+# Initialize logger
+logger = getLogger(__name__)
 
 class SourceAnalyzer:
     """

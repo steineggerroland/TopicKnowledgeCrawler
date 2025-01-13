@@ -1,14 +1,12 @@
 import hashlib
-import json
-import logging
 import feedparser
-import requests
-import trafilatura
 
-from src.crawler.fetchers.html_fetcher import extract_article_content
+from src.crawler.utils.logger import getLogger
+from src.crawler.fetchers.html_fetcher import HtmlFetcher  # For the static markdown generation
 
 # Initialize logger
-logger = logging.getLogger(__name__)
+logger = getLogger(__name__)
+
 
 class RssFetcher:
     def __init__(self, source):
@@ -21,16 +19,15 @@ class RssFetcher:
         """
         link = str(getattr(entry, "link", "") or "")
         title = str(getattr(entry, "title", "") or "")
-        summary = str(getattr(entry, "summary", "") or getattr(entry, "content", "") or getattr(entry, "description", "") or "")
-        content = link or title or summary or ""
+        summary = str(getattr(entry, "summary", "") or getattr(entry, "description", "") or "")
+        content = link or title or summary
         return hashlib.sha256(content.encode()).hexdigest()
 
     def extract_content(self, entry):
         """
-        Extracts the summary of an entry, handling both content as string and content arrays.
+        Extracts the 'content' of an entry, if available.
         """
         if hasattr(entry, "content") and entry.content:
-            # Handle content as array or string
             if isinstance(entry.content, list) and "value" in entry.content[0]:
                 return entry.content[0]["value"]
             elif isinstance(entry.content, str):
@@ -45,34 +42,23 @@ class RssFetcher:
         entries = []
 
         for entry in feed.entries:
-            # Extract summary or description
-            content = self.extract_content(entry)
-            link = getattr(entry, "link", None)
-
-            if not content and link:
-                entry_data = extract_article_content(link)
-                if entry_data:
-                    entries.append(entry_data)
-                    continue
-            elif not content:
-                content = getattr(entry, "summary", None) or getattr(entry, "description", None)
-
-            # Default case if full article fetch is not needed
+            # Standardize entry data
             entry_data = {
                 "title": getattr(entry, "title", None),
-                "link": link,
-                "summary": content,
-                "author": self.extract_author(entry),
-                "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None) or getattr(entry, "pubDate", None),
+                "link": getattr(entry, "link", None),
+                "summary": getattr(entry, "summary", None),
+                "content": self.extract_content(entry),
+                "author": getattr(entry, "author", None),
+                "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None),
                 "updatedAt": getattr(entry, "updated", None),
-                "id": self.generate_id(entry)
+                "id": self.generate_id(entry),
             }
+
+            # Add Markdown content if the link exists
+            if entry_data["link"]:
+                logger.debug(f"Generating Markdown for RSS entry: {entry_data['link']}")
+                entry_data["content_md"] = HtmlFetcher.generate_markdown_from_url(entry_data["link"])
+
             entries.append(entry_data)
 
         return entries
-
-    def extract_author(self, entry):
-        if hasattr(entry, "author"):
-            auth_tag = getattr(entry, "author", None)
-            return auth_tag if type(auth_tag) is str else getattr(auth_tag, "name", None) if hasattr(auth_tag, "name") else str(auth_tag)
-        return getattr(entry, "creator", None) or getattr(entry, "itunes:author", None)

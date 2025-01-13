@@ -1,25 +1,33 @@
 import json
 import os
+
 import tldextract
 
 from src.crawler.fetchers.html_fetcher import HtmlFetcher
-from src.crawler.fetchers.rss_fetcher import RssFetcher  # Updated import
-from src.crawler.utils.logger import logger
+from src.crawler.fetchers.podcast_fetcher import PodcastFetcher
+from src.crawler.fetchers.rss_fetcher import RssFetcher
+from src.crawler.utils.logger import getLogger
 from src.crawler.utils.sanitize import sanitize_string
 from src.crawler.utils.source_analyzer import SourceAnalyzer
 
 CONFIG_FILE = "config/sources.json"
 DATA_DIR = "data/raw"
 
+# Initialize logger
+logger = getLogger(__name__)
+
+
 def load_sources():
     """Loads the sources configuration."""
     with open(CONFIG_FILE, "r") as file:
         return json.load(file)["sources"]
 
+
 def save_sources(sources):
     """Saves the updated sources configuration."""
     with open(CONFIG_FILE, "w") as file:
         json.dump({"sources": sources}, file, indent=2)
+
 
 def process_source(source):
     """Processes a single source based on its type."""
@@ -31,8 +39,8 @@ def process_source(source):
 
     fetcher_map = {
         "rss": RssFetcher(source).fetch,
-        "rss+podcast": RssFetcher(source).fetch,
-        "html": HtmlFetcher(source).fetch
+        "rss+podcast": PodcastFetcher(source).fetch,
+        "html": HtmlFetcher(source).fetch,
     }
 
     try:
@@ -42,7 +50,7 @@ def process_source(source):
             for entry in entries:
                 entry.update({
                     "source_type": source_type,
-                    "tld": tldextract.extract(url).registered_domain
+                    "tld": tldextract.extract(url).registered_domain,
                 })
                 save_entry(entry)
             logger.info("Saved %s entries", len(entries))
@@ -51,14 +59,28 @@ def process_source(source):
     except Exception as e:
         logger.error("Error processing source '%s': %s", name, str(e))
 
+
 def save_entry(entry):
-    """Saves an entry as a JSON file."""
+    """
+    Saves an entry as a JSON file. If 'content_md' exists, saves it as a Markdown file.
+    """
     os.makedirs(DATA_DIR, exist_ok=True)
-    file_name = sanitize_string(f"{entry['id']}.json")
-    file_path = os.path.join(DATA_DIR, file_name)
-    with open(file_path, "w") as file:
-        json.dump(entry, file, indent=2)
-    logger.debug("Saved entry: %s", file_path)
+
+    # Save JSON entry
+    json_file_name = sanitize_string(f"{entry['id']}.json")
+    json_file_path = os.path.join(DATA_DIR, json_file_name)
+    with open(json_file_path, "w", encoding="utf-8") as json_file:
+        json.dump(entry, json_file, indent=2)
+    logger.debug(f"Saved JSON entry: {json_file_path}")
+
+    # Save Markdown content if available
+    if "content_md" in entry:
+        md_file_name = sanitize_string(f"{entry['id']}.md")
+        md_file_path = os.path.join(DATA_DIR, md_file_name)
+        with open(md_file_path, "w", encoding="utf-8") as md_file:
+            md_file.write(entry["content_md"])
+        logger.debug(f"Saved Markdown content: {md_file_path}")
+
 
 if __name__ == "__main__":
     sources = load_sources()
