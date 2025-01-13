@@ -39,12 +39,16 @@ def calculate_hash(text):
 def summarize_article_json(text, old_text=None):
     """Summarizes the article into JSON format using OpenAI's GPT model."""
     prompt = f'''
-    You are a content creator who transforms educational content into engaging, motivating, and captivating summaries. Your task is to rewrite the following article in a way that:
-    1. Provides a short teaser of no more than 200 characters to intrigue the reader.
-    2. Summarizes the article in an engaging and motivating tone, keeping it concise but reflecting the unique style of the original content (e.g., humorous, critical, or light-hearted).
-    3. Categorizes the article into one or more categories like "knowledge", "opinion", "news", "experience", "fun", etc., based on its content and tone.
-    4. Adds relevant tags or keywords that describe the article.
-    {"5. Describes changes between the old and new text if applicable." if old_text else ""}
+    You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following article and:
+    1. Provide a short teaser of no more than 200 characters to intrigue the reader.
+    2. Summarize the article in an engaging and concise tone, while maintaining its unique style (e.g., factual, humorous, or critical).
+    3. Categorize the article into one or more of the following categories: ["factual information", "expert opinions", "debates and discussions", "entertainment/personal", "miscellaneous"].
+    4. Assign a seriousness rating to the article based on its credibility and reliability:
+        • High: Credible and well-founded (e.g., academic articles, scientific studies).
+        • Medium: Solid, but subjective or less verified (e.g., expert opinions, journalistic articles).
+        • Low: Poorly founded, polemical, or possibly inaccurate (e.g., Reddit discussions, blog rants).
+    5. Add relevant tags or keywords that describe the article content.
+    {"6. Describe changes between the old and new text if applicable." if old_text else ""}
 
     Return your response as a JSON object in this exact format:
     {{
@@ -52,8 +56,9 @@ def summarize_article_json(text, old_text=None):
         "summary_long": "...",
         "category": ["..."],
         "tags": ["...", "..."],
-        "tone": ["..."]{"," if old_text else ""}
-        {'"teaser": "..."' if old_text else ""}
+        "seriousness_rating": "high/medium/low"
+        {", " if old_text else ""}
+        {"\"changes\": \"...\"" if old_text else ""}
     }}
 
     Article Text: {text}
@@ -65,7 +70,7 @@ def summarize_article_json(text, old_text=None):
         response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "You are a creative summarization assistant."},
+                {"role": "system", "content": "You are a creative summarization assistant and expert content analyst."},
                 {"role": "user", "content": prompt}
             ]
         )
@@ -74,7 +79,7 @@ def summarize_article_json(text, old_text=None):
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a creative summarization assistant."},
+                    {"role": "system", "content": "You are a creative summarization assistant and expert content analyst."},
                     {"role": "user", "content": prompt}
                 ]
             )
@@ -89,7 +94,6 @@ def summarize_article_json(text, old_text=None):
     except json.JSONDecodeError as e:
         logger.error("Failed to decode JSON response: %s", e)
         return None
-
 
 def process_raw_data(input_path, output_path, history_file):
     """Processes a raw JSON file, generates summaries, and checks against history."""
