@@ -47,6 +47,7 @@ def load_markdown_content(markdown_path):
 
 def summarize_article_json(text, old_text=None):
     """Summarizes the article into JSON format using OpenAI's GPT model."""
+    changes_attribute_text = "\"changes\": \"...\""
     prompt = f'''
     You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following article and:
     1. Provide a short teaser of no more than 200 characters to intrigue the reader.
@@ -65,9 +66,8 @@ def summarize_article_json(text, old_text=None):
         "summary_long": "...",
         "category": ["..."],
         "tags": ["...", "..."],
-        "seriousness_rating": "high/medium/low"
-        {", " if old_text else ""}
-        {"\"changes\": \"...\"" if old_text else ""}
+        "seriousness_rating": "high/medium/low"{"," if old_text else ""}
+        {changes_attribute_text if old_text else ""}
     }}
 
     Article Text: {text}
@@ -105,14 +105,15 @@ def summarize_article_json(text, old_text=None):
         return None
 
 
-def process_raw_data(input_path, output_path, history_file):
+def process_raw_data(input_path, output_path, history):
     """Processes a raw JSON file, generates summaries, and checks against history."""
-    # Load history
-    history = load_summary_history(history_file)
-
     # Load raw article
-    with open(input_path, "r") as file:
-        entry = json.load(file)
+    try:
+        with open(input_path, "r") as file:
+            entry = json.load(file)
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse JSON in {input_path}: {e}")
+        return
 
     # Load Markdown content if available
     markdown_path = input_path.replace(".json", ".md")
@@ -123,6 +124,10 @@ def process_raw_data(input_path, output_path, history_file):
     else:
         text_to_summarize = entry.get("summary", "") or entry.get("content", "")
 
+    if not text_to_summarize:
+        logger.warning(f"No content available to summarize for article: {entry.get('id', 'Unknown')}")
+        return
+
     # Calculate text hash
     text_hash = calculate_hash(text_to_summarize)
 
@@ -132,10 +137,10 @@ def process_raw_data(input_path, output_path, history_file):
     previous_text = history.get(article_id, {}).get("summary_text")
 
     if previous_hash == text_hash:
-        logger.info("No changes detected for article: %s. Skipping summarization.", article_id)
+        logger.info(f"No changes detected for article: {article_id}. Skipping summarization.")
         entry.update(history[article_id])
     else:
-        logger.info(f'Processing new or updated article: %s ({entry.get("title", "")})', article_id)
+        logger.info(f'Processing new or updated article: {article_id} ({entry.get("title", "")})')
         try:
             # Generate JSON summary
             summary_json = summarize_article_json(text_to_summarize, old_text=previous_text)
@@ -150,18 +155,14 @@ def process_raw_data(input_path, output_path, history_file):
                     "category": summary_json["category"],
                     "tags": summary_json["tags"],
                     "seriousness_rating": summary_json["seriousness_rating"],
-                    "last_updated": datetime.now().isoformat()
+                    "last_updated": datetime.now().isoformat(),
                 }
         except Exception as e:
-            logger.error("Failed to summarize article: %s. Skipping summarization: %s", (article_id, e))
+            logger.error("Failed to summarize article: %s. Skipping summarization: %s", article_id, e)
 
     # Save updated article
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, "w") as file:
         json.dump(entry, file, indent=4)
-
-    # Save updated history
-    save_summary_history(history, history_file)
 
 
 if __name__ == "__main__":
@@ -169,6 +170,11 @@ if __name__ == "__main__":
 
     execution_path = os.getcwd()
     RAW_DATA_FOLDER = os.path.join(execution_path, "data/raw/")
+    os.makedirs(os.path.dirname(os.path.join("data/processed")), exist_ok=True)
+    # Load history
+    history = load_summary_history(HISTORY_FILE)
     for filename in os.listdir(RAW_DATA_FOLDER):
         if filename.endswith(".json"):
-            process_raw_data(os.path.join(RAW_DATA_FOLDER, filename), os.path.join("data/processed", filename), HISTORY_FILE)
+            process_raw_data(os.path.join(RAW_DATA_FOLDER, filename), os.path.join("data/processed", filename), history)
+            # Save updated history
+            save_summary_history(history, HISTORY_FILE)

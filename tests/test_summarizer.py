@@ -1,146 +1,102 @@
-import json
-import os
-import shutil
+import unittest
 from unittest.mock import patch
+from unittest.mock import patch, mock_open, MagicMock
 
-import pytest
-
-from src.crawler.summarizer import process_raw_data, load_summary_history, save_summary_history
-
-RAW_DIR = "tests/fixtures/raw/"
-PROCESSED_DIR = "tests/fixtures/processed/"
-SUMMARY_HISTORY_FILE = "tests/fixtures/summary_history.json"
+from src.crawler.summarizer import process_raw_data, summarize_article_json, calculate_hash
 
 
-@pytest.fixture
-def setup_test_environment():
-    """Sets up the test environment: directories and files."""
-    # Clean up old test data
-    if os.path.exists(RAW_DIR):
-        shutil.rmtree(RAW_DIR)
-    if os.path.exists(PROCESSED_DIR):
-        shutil.rmtree(PROCESSED_DIR)
-    if os.path.exists(SUMMARY_HISTORY_FILE):
-        os.remove(SUMMARY_HISTORY_FILE)
+@patch(
+    "src.crawler.summarizer.client.chat.completions.create",
+    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test"}'))]),
+)
+class TestSummarizerBasicFunctionality(unittest.TestCase):
 
-    os.makedirs(RAW_DIR, exist_ok=True)
-    os.makedirs(PROCESSED_DIR, exist_ok=True)
+    @patch("os.makedirs")
+    @patch("os.path.exists", side_effect=lambda p: p == "article.md")
+    @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\nContent")
+    def test_happy_path(self, mock_open, mock_exists, mock_makedirs, mock_openai):
+        # Given
+        input_path = "article.json"
+        output_path = "processed_article.json"
+        entry = {"id": "1", "summary": "Fallback content."}
+        with patch("json.load", return_value=entry):
+            # When
+            process_raw_data(input_path, output_path, {})
 
-    # Mock raw files
-    raw_data_1 = {
-        "id": "article_1",
-        "summary": "This is the first test article summary."
-    }
-    raw_data_2 = {
-        "id": "article_2",
-        "summary": "This is the second test article summary."
-    }
+            # Then
+            mock_open.assert_any_call("article.md", "r", encoding="utf-8")
 
-    with open(os.path.join(RAW_DIR, "article_1.json"), "w") as f:
-        json.dump(raw_data_1, f)
-    with open(os.path.join(RAW_DIR, "article_2.json"), "w") as f:
-        json.dump(raw_data_2, f)
+    @patch("os.makedirs")
+    @patch("os.path.exists", side_effect=lambda p: p == "article.json")
+    @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\n")
+    def test_fallback_to_summary_if_markdown_not_found(self, mock_makedirs, mock_exists, mock_file, mock_openai):
+        # Given
+        input_path = "article.json"
+        output_path = "processed_article.json"
+        entry = {"id": "1", "title": "Title", "summary": "Fallback content."}
+        with patch("json.load", return_value=entry):
+            with patch("src.crawler.summarizer.logger.info") as mock_logger:
+                # When
+                process_raw_data(input_path, output_path, {})
 
-    # Mock initial summary history
-    with open(SUMMARY_HISTORY_FILE, "w") as f:
-        json.dump({}, f)
+                # Then
+                mock_logger.assert_any_call(f"Processing new or updated article: {entry['id']} (Title)")
 
-    yield
+    @patch("os.makedirs")
+    @patch("os.path.exists", return_value=True)
+    @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\n")
+    def test_fallback_to_summary_if_markdown_is_empty(self, mock_open, mock_exists, mock_makedirs, mock_openai):
+        # Given
+        input_path = "article.json"
+        output_path = "processed_article.json"
+        entry = {"id": "1", "summary": "Fallback content."}
+        with patch("json.load", return_value=entry):
+            # When
+            process_raw_data(input_path, output_path, {})
 
-    # Clean up after tests
-    shutil.rmtree(RAW_DIR)
-    shutil.rmtree(PROCESSED_DIR)
-    if os.path.exists(SUMMARY_HISTORY_FILE):
-        os.remove(SUMMARY_HISTORY_FILE)
-
-
-@patch("src.crawler.summarizer.summarize_article_json")
-def test_process_all_raw_files(mock_summarize_text, setup_test_environment):
-    """Test that all raw files are processed correctly and saved."""
-    # Mock the OpenAI API response
-    mock_summarize_text.return_value = {'teaser': 'Some teaser', 'summary_long': 'Long summary', 'category': 'category', 'tags': ['test'],'tone': ['informative']}
-
-    # Process files
-    raw_files = os.listdir(RAW_DIR)
-    for file_name in raw_files:
-        input_path = os.path.join(RAW_DIR, file_name)
-        output_path = os.path.join(PROCESSED_DIR, file_name)
-        process_raw_data(input_path, output_path, SUMMARY_HISTORY_FILE)
-
-    # Assertions
-    processed_files = os.listdir(PROCESSED_DIR)
-    assert len(processed_files) == len(raw_files)
-
-    for file_name in raw_files:
-        output_path = os.path.join(PROCESSED_DIR, file_name)
-        assert os.path.exists(output_path)
-
-        with open(output_path, "r") as f:
-            data = json.load(f)
-            assert "teaser" in data
-            assert "summary_long" in data
+            # Then
+            mock_open.assert_any_call("article.md", "r", encoding="utf-8")
 
 
-def test_summary_history_update(setup_test_environment):
-    """Test that the summary history file is updated correctly."""
-    test_history_file = SUMMARY_HISTORY_FILE
+@patch(
+    "src.crawler.summarizer.client.chat.completions.create",
+    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test"}'))]),
+)
+class TestSummarizerHashAndHistory(unittest.TestCase):
 
-    history = load_summary_history(test_history_file)
-    assert history == {}  # Initially empty
+    @patch("os.path.exists", side_effect=lambda p: p == "article.json")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_unchanged_content_skips_processing(self, mock_exists, mock_open, mock_openai):
+        # Given
+        input_path = "article.json"
+        output_path = "processed_article.json"
+        entry = {"id": "1", "summary": "Test content."}
+        history = {"1": {"hash": calculate_hash("Test content.")}}
+        with patch("json.load", side_effect=[entry]), patch(
+                "src.crawler.summarizer.logger.info") as mock_logger:
+            # When
+            process_raw_data(input_path, output_path, history)
 
-    # Update history
-    new_entry = {
-        "hash": "mocked_hash",
-        "summary_text": "This is a mock article.",
-        "summary_short": "Mock short summary",
-        "summary_long": "Mock long summary",
-        "last_updated": "2024-06-06T10:00:00"
-    }
-    history["article_1"] = new_entry
-    save_summary_history(history, test_history_file)
+            # Then
+            mock_logger.assert_any_call("No changes detected for article: 1. Skipping summarization.")
 
-    # Reload and verify
-    updated_history = load_summary_history(test_history_file)
-    assert "article_1" in updated_history
-    assert updated_history["article_1"]["summary_short"] == "Mock short summary"
+    @patch("os.path.exists", side_effect=lambda p: p == "article.json")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_changed_content_triggers_processing(self, mock_exists, mock_open, mock_openai):
+        # Given
+        input_path = "article.json"
+        output_path = "processed_article.json"
+        entry = {"id": "1", "title": "Title", "summary": "New content."}
+        history = {"1": {"hash": calculate_hash("Old content.")}}
+        with patch("json.load", side_effect=[entry]), patch(
+                "src.crawler.summarizer.logger.info") as mock_logger:
+            # When
+            process_raw_data(input_path, output_path, history)
+
+            # Then
+            mock_logger.assert_any_call("Processing new or updated article: 1 (Title)")
 
 
-@patch("src.crawler.summarizer.summarize_article_json")
-def test_changes_detection(mock_summarize_text, setup_test_environment):
-    """Test that changes in text trigger the 'changes' summary."""
-    # Initial raw data
-    raw_data = {
-        "id": "article_1",
-        "summary": "This is the first version of the summary."
-    }
-    with open(os.path.join(RAW_DIR, "article_1.json"), "w") as f:
-        json.dump(raw_data, f)
 
-    # Initial summary history
-    initial_history = {
-        "article_1": {
-            "hash": "old_hash",
-            "summary_text": "This is the old version of the summary.",
-            "teaser": "Old short summary",
-            "summary_long": "Old long summary"
-        }
-    }
-    with open(SUMMARY_HISTORY_FILE, "w") as f:
-        json.dump(initial_history, f)
-
-    # Mock summarize_text responses
-    mock_summarize_text.return_value = {'teaser': 'Some teaser', 'summary_long': 'Long summary', 'category': 'category', 'tags': ['test'],'tone': ['informative']}
-
-    # Process file
-    input_path = os.path.join(RAW_DIR, "article_1.json")
-    output_path = os.path.join(PROCESSED_DIR, "article_1.json")
-    process_raw_data(
-        input_path=input_path,
-        output_path=output_path,
-        history_file=SUMMARY_HISTORY_FILE
-    )
-
-    # Verify history update
-    updated_history = load_summary_history(SUMMARY_HISTORY_FILE)
-    assert "article_1" in updated_history
-    assert updated_history["article_1"]["summary_text"] == "This is the first version of the summary."
+if __name__ == "__main__":
+    unittest.main()

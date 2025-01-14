@@ -1,8 +1,9 @@
 import hashlib
+
 import feedparser
 
-from src.crawler.utils.logger import getLogger
 from src.crawler.fetchers.html_fetcher import HtmlFetcher  # For the static markdown generation
+from src.crawler.utils.logger import getLogger
 
 # Initialize logger
 logger = getLogger(__name__)
@@ -38,15 +39,25 @@ class RssFetcher:
         """
         Fetches entries from the RSS feed and processes them into a standardized format.
         """
-        feed = feedparser.parse(self.url)
+        try:
+            feed = feedparser.parse(self.url)
+        except Exception:
+            logger.error("Failed to parse feed '%s'", self.url)
+            return []
+
+        feed_entries = getattr(feed, "entries", None) or []
+        if len(feed_entries) == 0:
+            logger.warning("No entries found in the feed '%s'.", self.url)
+            return []
+
         entries = []
 
-        for entry in feed.entries:
+        for entry in feed_entries:
             # Standardize entry data
             entry_data = {
                 "title": getattr(entry, "title", None),
-                "link": getattr(entry, "link", None),
-                "summary": getattr(entry, "summary", None),
+                "link": HtmlFetcher.sanitize_link(getattr(entry, "link", None)),
+                "summary": getattr(entry, "summary", ""),
                 "content": self.extract_content(entry),
                 "author": getattr(entry, "author", None),
                 "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None),
@@ -55,10 +66,18 @@ class RssFetcher:
             }
 
             # Add Markdown content if the link exists
-            if entry_data["link"]:
+            try:
+                if not entry_data["link"]:
+                    logger.warning(f"Skipping entry '{entry_data}' without link.")
+                    continue
+                elif entry_data["link"] in (a["link"] for a in entries):
+                    logger.warning(f"Skipping duplicate entry '{entry_data}'.")
+                    continue
+
                 logger.debug(f"Generating Markdown for RSS entry: {entry_data['link']}")
                 entry_data["content_md"] = HtmlFetcher.generate_markdown_from_url(entry_data["link"])
-
-            entries.append(entry_data)
+                entries.append(entry_data)
+            except Exception as e:
+                logger.warning(f"Markdown generation failed for article {entry_data}: {e}")
 
         return entries

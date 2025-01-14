@@ -52,13 +52,25 @@ def process_source(source):
                     "source_type": source_type,
                     "tld": tldextract.extract(url).registered_domain,
                 })
-                save_entry(entry)
+                try:
+                    save_entry(entry)
+                except Exception as e:
+                    raise SavingEntryFailed(entry, source) from e
             logger.info("Saved %s entries", len(entries))
         else:
             logger.warning("No fetcher available for source type: %s", source_type)
+    except SavingEntryFailed as e:
+        logger.critical("Saving entry failed: %s", str(e))
+        raise e
     except Exception as e:
         logger.error("Error processing source '%s': %s", name, str(e))
 
+class SavingEntryFailed(Exception):
+    def __init__(self, entry, source):
+        self.entry = entry
+        self.source = source
+    def __str__(self):
+        return f"Saving entry '{self.entry}' from source '{self.source}' failed."
 
 def save_entry(entry):
     """

@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from hashlib import sha256
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
 import requests
 import trafilatura
@@ -27,9 +27,21 @@ class HtmlFetcher:
 
             # Parse main page to extract articles
             article_blocks = self.extract_article_blocks(main_page_html)
-            articles = [self.process_article_block(block) for block in article_blocks]
 
-            return [article for article in articles if article]  # Filter out None articles
+            if not article_blocks:
+                logger.error("No article blocks found on the page.")
+                return []
+
+            articles = []
+            for block in article_blocks:
+                try:
+                    article = self.process_article_block(block)
+                    if article and article["link"] not in (a["link"] for a in articles):
+                        articles.append(article)
+                except Exception as e:
+                    logger.warning(f"Error processing article block: {e}")
+
+            return articles
         except Exception as e:
             logger.error(f"Error fetching articles from {self.source_config['url']}: {e}")
             return []
@@ -48,7 +60,10 @@ class HtmlFetcher:
         Extract the article blocks using the article_selector.
         """
         soup = BeautifulSoup(html, "html.parser")
-        article_selector = self.source_config["configuration"]["article_selector"]
+        article_selector = self.source_config["configuration"].get("article_selector", "")
+        if not article_selector:
+            logger.error("No article selector provided in configuration.")
+            return []
         return soup.select(article_selector)
 
     def process_article_block(self, article_block):
@@ -57,23 +72,34 @@ class HtmlFetcher:
         """
         try:
             # Extract the main page link
-            anchor_selector = self.source_config["configuration"]["main_page_anchor_selector"]
+            anchor_selector = self.source_config["configuration"].get("main_page_anchor_selector", "")
             anchor_element = article_block.select_one(anchor_selector)
-            if not anchor_element:
-                logger.warning("Could not find main page anchor for article.")
+
+            if not anchor_element or not anchor_element.get("href"):
+                logger.warning("Could not find a valid main page anchor for article.")
                 return None
 
-            main_page_url = urljoin(self.source_config["url"], anchor_element.get("href"))
-            logger.debug(f'Fetching article from "{main_page_url}".')
+            # Sanitize the link
+            raw_url = urljoin(self.source_config["url"], anchor_element.get("href"))
+            sanitized_url = self.sanitize_link(raw_url)
+
+            logger.debug(f"Fetching article from sanitized URL: {sanitized_url}")
 
             # Fetch article details
-            article = self.extract_article_content(main_page_url)
+            article = self.extract_article_content(sanitized_url)
             if not article:
-                logger.warning(f"Could not extract content from page: {main_page_url}")
+                logger.warning(f"Failed to extract content from page: {sanitized_url}")
                 return None
 
+            # Add sanitized link to article
+            article["link"] = sanitized_url
+
             # Add Markdown content
-            article["content_md"] = self.generate_markdown_from_url(main_page_url)
+            try:
+                article["content_md"] = self.generate_markdown_from_url(sanitized_url)
+            except Exception as e:
+                logger.warning(f"Markdown generation failed for article {article}: {e}")
+                raise e
 
             return article
         except Exception as e:
@@ -86,14 +112,13 @@ class HtmlFetcher:
         """
         try:
             html = self._fetch_html(url)
-            # Extract article content and metadata
             result = trafilatura.extract(
                 html,
                 with_metadata=True,
                 include_links=True,
                 include_images=True,
                 include_formatting=True,
-                output_format='json'
+                output_format="json",
             )
             if not result:
                 logger.warning("trafilatura could not extract content")
@@ -101,29 +126,14 @@ class HtmlFetcher:
 
             json_result = json.loads(result)
 
-            # Extract relevant fields
-            title = json_result.get("title")
-            summary = json_result.get("raw_text")
-            published_at_raw = json_result.get("date")
-            updated_at_raw = json_result.get("last-modified")
-            author = json_result.get("author")
-
-            # Parse and format dates
-            published_at = self.parse_date(published_at_raw)
-            updated_at = self.parse_date(updated_at_raw)
-
-            # Generate a unique ID based on the URL
-            article_id = sha256(url.encode("utf-8")).hexdigest()
-
-            # Return the structured article data
             return {
-                "title": title,
+                "title": json_result.get("title"),
                 "link": url,
-                "summary": summary,
-                "publishedAt": published_at,
-                "updatedAt": updated_at,
-                "id": article_id,
-                "author": author
+                "summary": json_result.get("raw_text"),
+                "publishedAt": self.parse_date(json_result.get("date")),
+                "updatedAt": self.parse_date(json_result.get("last-modified")),
+                "id": sha256(url.encode("utf-8")).hexdigest(),
+                "author": json_result.get("author"),
             }
         except Exception as e:
             logger.error(f"Error extracting article content for {url}: {e}")
@@ -144,16 +154,16 @@ class HtmlFetcher:
                 include_formatting=True,
                 include_links=True,
                 include_images=True,
-                output_format="markdown"
+                output_format="markdown",
             )
             if markdown:
                 return markdown
             else:
                 logger.warning("Failed to extract content as Markdown for URL: %s", url)
-                return "No content available."
+                return ""
         except Exception as e:
             logger.error("Error fetching or converting URL to Markdown: %s", str(e))
-            return "No content available."
+            return ""
 
     @staticmethod
     def parse_date(date_str):
@@ -163,12 +173,28 @@ class HtmlFetcher:
         if not date_str:
             return None
         try:
-            parsed_date = datetime.fromisoformat(date_str)
-            return parsed_date.isoformat()
+            return datetime.fromisoformat(date_str).isoformat()
         except ValueError:
             try:
-                parsed_date = datetime.strptime(date_str, "%Y-%m-%d")
-                return parsed_date.isoformat()
+                return datetime.strptime(date_str, "%Y-%m-%d").isoformat()
             except ValueError:
                 logger.warning(f"Could not parse date: {date_str}")
                 return None
+
+    @staticmethod
+    def sanitize_link(url):
+        """
+        Remove unnecessary parameters like tracking IDs from the URL.
+        """
+        try:
+            parsed_url = urlparse(url)
+            query = parse_qs(parsed_url.query)
+            # Remove common tracking parameters
+            filtered_query = {k: v for k, v in query.items() if k not in {"q", "query", "source", "referrer", "tracking", "utm_source", "utm_medium", "utm_campaign"}}
+            sanitized_url = urlunparse(
+                parsed_url._replace(query=urlencode(filtered_query, doseq=True))
+            )
+            return sanitized_url
+        except Exception as e:
+            logger.warning(f"Failed to sanitize URL {url}: {e}")
+            return url

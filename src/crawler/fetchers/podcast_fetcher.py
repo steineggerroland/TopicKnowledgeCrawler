@@ -4,6 +4,8 @@ import logging
 import feedparser
 import trafilatura
 
+from src.crawler.fetchers.html_fetcher import HtmlFetcher
+
 # Initialize logger
 logger = logging.getLogger(__name__)
 
@@ -28,30 +30,54 @@ class PodcastFetcher:
         """
         Converts HTML content to Markdown using trafilatura.
         """
-        try:
-            markdown = trafilatura.extract(
-                html_content,
-                include_formatting=True,
-                include_images=True,
-                include_links=True,
-                output_format="markdown"
-            )
-            return markdown if markdown else "No content available."
-        except Exception as e:
-            logger.error("Failed to convert HTML to Markdown: %s", str(e))
-            return "No content available."
+        markdown = trafilatura.extract(
+            html_content,
+            include_formatting=True,
+            include_images=True,
+            include_links=True,
+            output_format="markdown"
+        )
+        return markdown if markdown else ""
+
+    def get_best_content(self, item):
+        """
+        Extract the most suitable content from an RSS entry.
+        Priority:
+        1. HTML content (text/html)
+        2. XHTML content (application/xhtml+xml)
+        3. Plain text content (text/plain)
+        4. Description or iTunes summary
+        """
+        content_fields = item.get("content", [])
+        if isinstance(content_fields, list):
+            for content_type in ["text/html", "application/xhtml+xml", "text/plain"]:
+                for field in content_fields:
+                    if field.get("type") == content_type:
+                        return field.get("value")
+
+        # Fallback to description or iTunes summary
+        return item.get("description") or item.get("itunes:summary")
 
     def fetch(self):
         """
         Fetches entries from the RSS feed, processes them into standardized entries with Markdown content.
         """
-        feed = feedparser.parse(self.url)
+        try:
+            feed = feedparser.parse(self.url)
+        except Exception:
+            logger.error("Failed to parse feed '%s'", self.url)
+            return []
+
+        feed_entries = getattr(feed, "entries", None) or []
+        if len(feed_entries) == 0:
+            logger.warning("No entries found in the feed '%s'.", self.url)
+            return []
+
         entries = []
 
-        for item in feed.entries:
+        for item in feed_entries:
             # Extract relevant fields
             title = item.get("title")
-            link = item.get("link")
             published_at = item.get("pubDate") or item.get("published", None)
             author = (
                     item.get("itunes:author") or
@@ -59,23 +85,24 @@ class PodcastFetcher:
                     item.get("dc:creator")
             )
             categories = item.get("tags", [])
-            description = item.get("description")
-            itunes_summary = item.get("itunes:summary")
+            link = HtmlFetcher.sanitize_link(item.get("link"))
 
-            # Determine the best content field
-            html_content = "".join(
-                [i["value"] for i in item.get("content", []) if i["type"] == "text/html"]) or "".join(
-                [i["value"] for i in item.get("content", []) if i["type"] == "application/xhtml+xml"]) or "".join(
-                [i["value"] for i in item.get("content", []) if
-                 i["type"] == "text/plain"]) or description or itunes_summary
+            if link in (a["link"] for a in entries):
+                logger.warning(f"Skipping duplicate entry '{item}'.")
+                continue
+
+            # Extract the best content
+            html_content = self.get_best_content(item)
             if not html_content:
                 logger.warning(f"No content found for podcast entry: {title} ({link})")
+                continue
 
             # Convert HTML to Markdown
-            markdown_content = (
-                self.extract_markdown_content(f"<html><body>{html_content}</body></html>")
-                if html_content else "No content available."
-            )
+            try:
+                markdown_content = self.extract_markdown_content(f"<html><body>{html_content}</body></html>")
+            except Exception as e:
+                logger.error("Failed to convert entry '%s' to Markdown: %s", item, str(e))
+                continue
 
             # Build the entry
             entry = {
@@ -84,7 +111,7 @@ class PodcastFetcher:
                 "author": author,
                 "publishedAt": published_at,
                 "categories": [tag["term"] for tag in categories] if categories else [],
-                "id": self.generate_id({"link": link, "title": title, "summary": description}),
+                "id": self.generate_id({"link": link, "title": title, "summary": html_content}),
                 "content_md": f"# {title}\n\n{markdown_content}"
             }
             entries.append(entry)
