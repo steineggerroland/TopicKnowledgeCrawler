@@ -58,7 +58,6 @@ class RssFetcher:
                 "title": getattr(entry, "title", None),
                 "link": HtmlFetcher.sanitize_link(getattr(entry, "link", None)),
                 "summary": getattr(entry, "summary", ""),
-                "content": self.extract_content(entry),
                 "author": getattr(entry, "author", None),
                 "publishedAt": getattr(entry, "published", None) or getattr(entry, "updated", None),
                 "updatedAt": getattr(entry, "updated", None),

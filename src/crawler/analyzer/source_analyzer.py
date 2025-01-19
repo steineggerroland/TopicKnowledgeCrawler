@@ -1,5 +1,5 @@
 import requests
-from src.crawler.utils.llm_based_source_analyzer import LlmBasedSourceAnalyzer
+from src.crawler.analyzer.llm_based_source_analyzer import LlmBasedSourceAnalyzer
 from src.crawler.utils.logger import getLogger
 
 # Initialize logger

@@ -2,9 +2,9 @@ import hashlib
 import logging
 
 import feedparser
-import trafilatura
 
 from src.crawler.fetchers.html_fetcher import HtmlFetcher
+from src.crawler.utils import text_processor
 
 # Initialize logger
 logger = logging.getLogger(__name__)
@@ -30,13 +30,7 @@ class PodcastFetcher:
         """
         Converts HTML content to Markdown using trafilatura.
         """
-        markdown = trafilatura.extract(
-            html_content,
-            include_formatting=True,
-            include_images=True,
-            include_links=True,
-            output_format="markdown"
-        )
+        markdown = text_processor.convert_from_html_to_markdown(html_content)
         return markdown if markdown else ""
 
     def get_best_content(self, item):

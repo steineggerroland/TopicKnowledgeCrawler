@@ -4,9 +4,9 @@ from hashlib import sha256
 from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 
 import requests
-import trafilatura
 from bs4 import BeautifulSoup
 
+from src.crawler.utils import text_processor
 from src.crawler.utils.logger import getLogger
 
 # Initialize logger
@@ -46,15 +46,6 @@ class HtmlFetcher:
             logger.error(f"Error fetching articles from {self.source_config['url']}: {e}")
             return []
 
-    def _fetch_html(self, url):
-        """
-        Fetch the HTML content of a given URL.
-        """
-        response = requests.get(url, timeout=10)
-        if response.status_code != 200:
-            raise Exception(f"Failed to fetch HTML content. Status code: {response.status_code}")
-        return response.text
-
     def extract_article_blocks(self, html):
         """
         Extract the article blocks using the article_selector.
@@ -86,7 +77,7 @@ class HtmlFetcher:
             logger.debug(f"Fetching article from sanitized URL: {sanitized_url}")
 
             # Fetch article details
-            article = self.extract_article_content(sanitized_url)
+            article = self.extract_article_meta(sanitized_url)
             if not article:
                 logger.warning(f"Failed to extract content from page: {sanitized_url}")
                 return None
@@ -106,20 +97,13 @@ class HtmlFetcher:
             logger.error(f"Error processing article block: {e}")
             return None
 
-    def extract_article_content(self, url):
+    def extract_article_meta(self, url):
         """
         Extract article content using trafilatura.
         """
         try:
             html = self._fetch_html(url)
-            result = trafilatura.extract(
-                html,
-                with_metadata=True,
-                include_links=True,
-                include_images=True,
-                include_formatting=True,
-                output_format="json",
-            )
+            result = text_processor.analyze_meta(html)
             if not result:
                 logger.warning("trafilatura could not extract content")
                 return None
@@ -145,25 +129,25 @@ class HtmlFetcher:
         Fetches a webpage and converts its content into Markdown using trafilatura.
         """
         try:
-            response = requests.get(url, timeout=10)
-            response.raise_for_status()
-            html_content = response.text
-
-            markdown = trafilatura.extract(
-                html_content,
-                include_formatting=True,
-                include_links=True,
-                include_images=True,
-                output_format="markdown",
-            )
+            html_content = HtmlFetcher._fetch_html(url)
+            markdown = text_processor.convert_from_html_to_markdown(html_content)
             if markdown:
                 return markdown
             else:
                 logger.warning("Failed to extract content as Markdown for URL: %s", url)
-                return ""
+                raise Exception()
         except Exception as e:
             logger.error("Error fetching or converting URL to Markdown: %s", str(e))
-            return ""
+            raise e
+
+    @staticmethod
+    def _fetch_html(url):
+        """
+        Fetch the HTML content of a given URL.
+        """
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        return response.text
 
     @staticmethod
     def parse_date(date_str):
@@ -190,7 +174,9 @@ class HtmlFetcher:
             parsed_url = urlparse(url)
             query = parse_qs(parsed_url.query)
             # Remove common tracking parameters
-            filtered_query = {k: v for k, v in query.items() if k not in {"q", "query", "source", "referrer", "tracking", "utm_source", "utm_medium", "utm_campaign"}}
+            filtered_query = {k: v for k, v in query.items() if
+                              k not in {"q", "query", "source", "referrer", "tracking", "utm_source", "utm_medium",
+                                        "utm_campaign"}}
             sanitized_url = urlunparse(
                 parsed_url._replace(query=urlencode(filtered_query, doseq=True))
             )

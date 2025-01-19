@@ -1,4 +1,5 @@
 import json
+import multiprocessing
 import os
 
 import tldextract
@@ -7,8 +8,9 @@ from src.crawler.fetchers.html_fetcher import HtmlFetcher
 from src.crawler.fetchers.podcast_fetcher import PodcastFetcher
 from src.crawler.fetchers.rss_fetcher import RssFetcher
 from src.crawler.utils.logger import getLogger
-from src.crawler.utils.sanitize import sanitize_string
-from src.crawler.utils.source_analyzer import SourceAnalyzer
+from src.crawler.utils.text_processor import sanitize_string
+from src.crawler.analyzer.source_analyzer import SourceAnalyzer
+from src.crawler.utils.text_processor import calculate_hash
 
 CONFIG_FILE = "config/sources.json"
 DATA_DIR = "data/raw"
@@ -51,6 +53,7 @@ def process_source(source):
                 entry.update({
                     "source_type": source_type,
                     "tld": tldextract.extract(url).registered_domain,
+                    "content_hash": calculate_hash(entry["content_md"])
                 })
                 try:
                     save_entry(entry)
@@ -81,16 +84,18 @@ def save_entry(entry):
     # Save JSON entry
     json_file_name = sanitize_string(f"{entry['id']}.json")
     json_file_path = os.path.join(DATA_DIR, json_file_name)
+    markdown = entry['content_md']
+    del entry['content_md']
     with open(json_file_path, "w", encoding="utf-8") as json_file:
         json.dump(entry, json_file, indent=2)
     logger.debug(f"Saved JSON entry: {json_file_path}")
 
     # Save Markdown content if available
-    if "content_md" in entry:
+    if markdown:
         md_file_name = sanitize_string(f"{entry['id']}.md")
         md_file_path = os.path.join(DATA_DIR, md_file_name)
         with open(md_file_path, "w", encoding="utf-8") as md_file:
-            md_file.write(entry["content_md"])
+            md_file.write(markdown)
         logger.debug(f"Saved Markdown content: {md_file_path}")
 
 
@@ -104,4 +109,5 @@ if __name__ == "__main__":
             updated_source = analyzer.analyze_source(source)
             sources[sources.index(source)] = updated_source
             save_sources(sources)
-        process_source(source)
+    with multiprocessing.Pool() as pool:
+        pool.map(process_source, sources)

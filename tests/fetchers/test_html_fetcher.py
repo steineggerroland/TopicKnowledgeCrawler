@@ -27,9 +27,8 @@ def mock_fetch_html(url):
     else:
         raise Exception("Page not found")
 
-
 class TestHtmlFetcher:
-    @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher.generate_markdown_from_url", return_value="Markdown Content")
+    @patch("src.crawler.fetchers.html_fetcher.text_processor.convert_from_html_to_markdown", return_value="Markdown Content")
     @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher._fetch_html", side_effect=mock_fetch_html)
     def test_happy_case(self, mock_fetch, mock_markdown, source_html):
         # Given
@@ -43,7 +42,7 @@ class TestHtmlFetcher:
         assert entries[0]["title"] == "Title 1"
         assert entries[1]["title"] == "Title 2"
 
-    @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher.generate_markdown_from_url", side_effect=[Exception("Failed"), "Markdown Content"])
+    @patch("src.crawler.fetchers.html_fetcher.text_processor.convert_from_html_to_markdown", side_effect=[Exception("Failed"), "Markdown Content"])
     @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher._fetch_html", side_effect=mock_fetch_html)
     def test_first_article_fails(self, mock_fetch, mock_markdown, source_html):
         # Given
@@ -78,7 +77,7 @@ class TestHtmlFetcher:
         # Then
         assert len(entries) == 0
 
-    @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher.generate_markdown_from_url", side_effect=[Exception("Failed"), "Markdown Content"])
+    @patch("src.crawler.fetchers.html_fetcher.text_processor.convert_from_html_to_markdown", side_effect=[Exception("Failed"), "Markdown Content"])
     @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher._fetch_html", side_effect=mock_fetch_html)
     def test_markdown_extraction_fails(self, mock_fetch, mock_markdown, source_html):
         # Given
@@ -91,7 +90,7 @@ class TestHtmlFetcher:
         assert len(entries) == 1
         assert entries[0]["title"] == "Title 2"
 
-    @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher.generate_markdown_from_url", side_effect=["Markdown Content", "Markdown Content"])
+    @patch("src.crawler.fetchers.html_fetcher.text_processor.convert_from_html_to_markdown", side_effect=["Markdown Content", "Markdown Content"])
     @patch("src.crawler.fetchers.html_fetcher.HtmlFetcher._fetch_html", side_effect=mock_fetch_html)
     def test_deduplicate_articles(self, mock_fetch, mock_markdown, source_html):
         # Given

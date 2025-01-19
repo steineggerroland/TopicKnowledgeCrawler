@@ -1,13 +1,14 @@
 import unittest
-from unittest.mock import patch
+from datetime import datetime
 from unittest.mock import patch, mock_open, MagicMock
 
-from src.crawler.summarizer import process_raw_data, summarize_article_json, calculate_hash
+from src.crawler.summarizer import process_raw_data
+from src.crawler.utils.text_processor import calculate_hash
 
 
 @patch(
     "src.crawler.summarizer.client.chat.completions.create",
-    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test"}'))]),
+    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test", "summary_long": "Long text", "category": "[\\"Test\\", \\"TDD\\"]", "tags": "[\\"Testing\\",\\"Test\\"]", "seriousness_rating": "low"}'))]),
 )
 class TestSummarizerBasicFunctionality(unittest.TestCase):
 
@@ -18,44 +19,18 @@ class TestSummarizerBasicFunctionality(unittest.TestCase):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"
-        entry = {"id": "1", "summary": "Fallback content."}
+        markdown_output_path = "processed_article.json"
+        entry = {"id": "1", "content_hash": "hash123"}
         with patch("json.load", return_value=entry):
             # When
-            process_raw_data(input_path, output_path, {})
+            result = process_raw_data(input_path, output_path, {})
 
             # Then
-            mock_open.assert_any_call("article.md", "r", encoding="utf-8")
-
-    @patch("os.makedirs")
-    @patch("os.path.exists", side_effect=lambda p: p == "article.json")
-    @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\n")
-    def test_fallback_to_summary_if_markdown_not_found(self, mock_makedirs, mock_exists, mock_file, mock_openai):
-        # Given
-        input_path = "article.json"
-        output_path = "processed_article.json"
-        entry = {"id": "1", "title": "Title", "summary": "Fallback content."}
-        with patch("json.load", return_value=entry):
-            with patch("src.crawler.summarizer.logger.info") as mock_logger:
-                # When
-                process_raw_data(input_path, output_path, {})
-
-                # Then
-                mock_logger.assert_any_call(f"Processing new or updated article: {entry['id']} (Title)")
-
-    @patch("os.makedirs")
-    @patch("os.path.exists", return_value=True)
-    @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\n")
-    def test_fallback_to_summary_if_markdown_is_empty(self, mock_open, mock_exists, mock_makedirs, mock_openai):
-        # Given
-        input_path = "article.json"
-        output_path = "processed_article.json"
-        entry = {"id": "1", "summary": "Fallback content."}
-        with patch("json.load", return_value=entry):
-            # When
-            process_raw_data(input_path, output_path, {})
-
-            # Then
-            mock_open.assert_any_call("article.md", "r", encoding="utf-8")
+            mock_open.assert_called_with(output_path, "w")
+            mock_open.assert_called_with(markdown_output_path, "w")
+            diff_last_updated_to_now = (datetime.fromisoformat(result["last_updated"]) - datetime.now()).total_seconds()
+            self.assertAlmostEqual(diff_last_updated_to_now, 0, 1)
+            self.assertEqual(result["hash"], "hash123")
 
 
 @patch(
@@ -70,8 +45,8 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"
-        entry = {"id": "1", "summary": "Test content."}
-        history = {"1": {"hash": calculate_hash("Test content.")}}
+        entry = {"id": "1", "content_hash": "hash123"}
+        history = {"hash": "hash123"}
         with patch("json.load", side_effect=[entry]), patch(
                 "src.crawler.summarizer.logger.info") as mock_logger:
             # When
@@ -86,8 +61,8 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"
-        entry = {"id": "1", "title": "Title", "summary": "New content."}
-        history = {"1": {"hash": calculate_hash("Old content.")}}
+        entry = {"id": "1", "title": "Title", "content_hash": "hash123"}
+        history = {"hash": calculate_hash("Old content.")}
         with patch("json.load", side_effect=[entry]), patch(
                 "src.crawler.summarizer.logger.info") as mock_logger:
             # When
@@ -95,7 +70,6 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
 
             # Then
             mock_logger.assert_any_call("Processing new or updated article: 1 (Title)")
-
 
 
 if __name__ == "__main__":

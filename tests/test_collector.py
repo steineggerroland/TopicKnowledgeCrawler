@@ -29,7 +29,7 @@ def source_html():
 
 @pytest.fixture
 def mock_entry():
-    return {"id": "test_id", "title": "Test Title", "link": "https://example.com/article"}
+    return {"id": "test_id", "content_md": "##Content as markdown", "title": "Test Title", "link": "https://example.com/article"}
 
 
 # Grouping tests by test class

@@ -1,5 +1,5 @@
-import hashlib
 import json
+import multiprocessing
 import os
 from datetime import datetime
 
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from src.crawler.utils.logger import getLogger
-from src.crawler.utils.sanitize import clean_json_response
+from src.crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)
@@ -30,11 +30,6 @@ def save_summary_history(history, history_file):
     """Saves the updated summary history to the file."""
     with open(history_file, "w") as file:
         json.dump(history, file, indent=4)
-
-
-def calculate_hash(text):
-    """Generates a SHA256 hash for the given text."""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def load_markdown_content(markdown_path):
@@ -88,7 +83,8 @@ def summarize_article_json(text, old_text=None):
             response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a creative summarization assistant and expert content analyst."},
+                    {"role": "system",
+                     "content": "You are a creative summarization assistant and expert content analyst."},
                     {"role": "user", "content": prompt}
                 ]
             )
@@ -105,7 +101,7 @@ def summarize_article_json(text, old_text=None):
         return None
 
 
-def process_raw_data(input_path, output_path, history):
+def process_raw_data(input_path, output_path, history_entry):
     """Processes a raw JSON file, generates summaries, and checks against history."""
     # Load raw article
     try:
@@ -115,41 +111,45 @@ def process_raw_data(input_path, output_path, history):
         logger.error(f"Failed to parse JSON in {input_path}: {e}")
         return
 
-    # Load Markdown content if available
-    markdown_path = input_path.replace(".json", ".md")
-    markdown_content = load_markdown_content(markdown_path)
-
-    if markdown_content:
-        text_to_summarize = markdown_content
-    else:
-        text_to_summarize = entry.get("summary", "") or entry.get("content", "")
-
-    if not text_to_summarize:
-        logger.warning(f"No content available to summarize for article: {entry.get('id', 'Unknown')}")
-        return
-
     # Calculate text hash
-    text_hash = calculate_hash(text_to_summarize)
+    article_id = entry.get("id", os.path.basename(input_path))
+    text_hash = entry.get("content_hash")
+    if not text_hash:
+        logger.debug(f"No content detected for article: {article_id}. Skipping summarization.")
+        return
+    input_markdown_path = input_path.replace(".json", ".md")
+    output_markdown_path = output_path.replace(".json", ".md")
 
     # Check history for existing summaries
-    article_id = entry.get("id", os.path.basename(input_path))
-    previous_hash = history.get(article_id, {}).get("hash")
-    previous_text = history.get(article_id, {}).get("summary_text")
+    previous_hash = history_entry.get("hash", None)
+    previous_text = load_markdown_content(output_markdown_path)
 
     if previous_hash == text_hash:
         logger.info(f"No changes detected for article: {article_id}. Skipping summarization.")
-        entry.update(history[article_id])
+        entry.update(history_entry)
     else:
         logger.info(f'Processing new or updated article: {article_id} ({entry.get("title", "")})')
+
+        # Load Markdown content if available
+        markdown_content = load_markdown_content(input_markdown_path)
+
+        if not markdown_content:
+            logger.warning(f"No content available to summarize for article: {entry.get('id', 'Unknown')}")
+            return
+
+        with open(output_markdown_path, "w", encoding="utf-8") as md_file:
+            md_file.write(markdown_content)
+
         try:
             # Generate JSON summary
-            summary_json = summarize_article_json(text_to_summarize, old_text=previous_text)
+            summary_json = summarize_article_json(markdown_content, old_text=previous_text)
+            assert all(key in summary_json for key in ["teaser", "summary_long", "category", "tags", "seriousness_rating"])
 
             if summary_json:
                 entry.update(summary_json)
-                history[article_id] = {
+                history_entry = {
                     "hash": text_hash,
-                    "summary_text": text_to_summarize,
+                    "summary_text": markdown_content,
                     "teaser": summary_json["teaser"],
                     "summary_long": summary_json["summary_long"],
                     "category": summary_json["category"],
@@ -163,18 +163,29 @@ def process_raw_data(input_path, output_path, history):
     # Save updated article
     with open(output_path, "w") as file:
         json.dump(entry, file, indent=4)
+    return history_entry
+
+
+execution_path = os.getcwd()
+RAW_DATA_FOLDER = os.path.join(execution_path, "data/raw/")
+PROCESSED_DATA_FOLDER = os.path.join("data/processed")
+HISTORY_FILE = "data/summary_history.json"
+history = load_summary_history(HISTORY_FILE)
+
+
+def process_article(article_id):
+    return {"id": article_id, "entry": process_raw_data(os.path.join(RAW_DATA_FOLDER, f"{article_id}.json"),
+                                                        os.path.join(PROCESSED_DATA_FOLDER, f"{article_id}.json"),
+                                                        history.get(article_id, {}) or {})}
 
 
 if __name__ == "__main__":
-    HISTORY_FILE = "data/summary_history.json"
-
-    execution_path = os.getcwd()
-    RAW_DATA_FOLDER = os.path.join(execution_path, "data/raw/")
-    os.makedirs(os.path.dirname(os.path.join("data/processed")), exist_ok=True)
+    os.makedirs(os.path.dirname(PROCESSED_DATA_FOLDER), exist_ok=True)
     # Load history
-    history = load_summary_history(HISTORY_FILE)
-    for filename in os.listdir(RAW_DATA_FOLDER):
-        if filename.endswith(".json"):
-            process_raw_data(os.path.join(RAW_DATA_FOLDER, filename), os.path.join("data/processed", filename), history)
-            # Save updated history
-            save_summary_history(history, HISTORY_FILE)
+    with multiprocessing.Pool() as pool:
+        results = pool.map(process_article, list(
+            map(lambda f: f[0:-5], filter(lambda f: f.endswith(".json"), os.listdir(RAW_DATA_FOLDER)))))
+        for result in list(filter(lambda r: r["entry"], results)):
+            history[result["id"]] = result["entry"]
+
+    save_summary_history(history, HISTORY_FILE)

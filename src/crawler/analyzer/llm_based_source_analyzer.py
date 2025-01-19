@@ -11,7 +11,7 @@ from openai import OpenAI
 from trafilatura import extract
 
 from src.crawler.utils.logger import getLogger
-from src.crawler.utils.sanitize import clean_json_response
+from src.crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)
