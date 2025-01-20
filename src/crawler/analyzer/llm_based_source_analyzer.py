@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from typing import Any, Dict, List
 from urllib.parse import urljoin
 
@@ -240,6 +241,7 @@ Validation Examples:
             messages=messages
         )
         raw_content = response.choices[0].message.content
+        time.sleep(120)
         return raw_content
 
     def titles_are_similar(self, title1: str, title2: str) -> bool:

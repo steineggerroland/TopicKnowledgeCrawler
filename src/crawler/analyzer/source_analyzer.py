@@ -20,7 +20,7 @@ class SourceAnalyzer:
         url = source["url"]
 
         try:
-            response = requests.head(url, timeout=10)
+            response = requests.get(url, timeout=10)
             content_type = response.headers.get("content-type", "")
 
             if "xml" in content_type or "rss" in content_type:
