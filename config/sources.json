@@ -47,8 +47,12 @@
     },
     {
       "name": "Reddit",
-      "type": "rss",
-      "url": "https://www.reddit.com/r/softwarearchitecture/.rss"
+      "type": "html",
+      "url": "https://www.reddit.com/r/softwarearchitecture",
+      "configuration": {
+        "article_selector": "main article",
+        "main_page_anchor_selector": "a[target=_blank]"
+      }
     },
     {
       "name": "Planet Geek",
