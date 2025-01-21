@@ -1,6 +1,5 @@
 import json
 import os
-import time
 from typing import Any, Dict, List
 from urllib.parse import urljoin
 
@@ -8,20 +7,22 @@ import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from fuzzywuzzy import fuzz
-from openai import OpenAI
 from trafilatura import extract
 
+from src.crawler.utils.llm_prompter import LlmPrompter
 from src.crawler.utils.logger import getLogger
 from src.crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)
 
-# Load OpenAI API key
 load_dotenv()
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
-lb = '\n' # line break for f-string
+LLM_PROVIDER_NAME = os.getenv("LLM_PROVIDER", "ollama")  # Default to OpenAI
+
+# Initialize the LLM prompter
+llm_prompter = LlmPrompter(LLM_PROVIDER_NAME)
+lb = '\n'  # line break for f-string
+
 
 class LlmBasedSourceAnalyzer:
     """
@@ -80,7 +81,7 @@ class LlmBasedSourceAnalyzer:
 
     def analyze_articles_page(self, html):
         prompt = self.create_main_prompt(html.text)
-        response = self.query_llm(prompt, role="assistant", model='gpt-4o-mini')
+        response = llm_prompter.query(prompt, model_size='large')
         cleaned_response = clean_json_response(response)
         analysis = json.loads(cleaned_response)
         return analysis
@@ -116,19 +117,21 @@ class LlmBasedSourceAnalyzer:
             if self.titles_are_similar(representative_title, page_title):
                 # Use GPT to refine the anchor selector
                 logger.info(f"Main page identified: {full_url}. Refining anchor selector.")
-                anchor_selector = self.refine_anchor_selector(known_article_block=article_html,
-                                                              known_anchor_html=link.decode_contents(),
-                                                              additional_blocks=other_article_html_examples)
+                response = llm_prompter.query(self.refine_anchor_selector(known_article_block=article_html,
+                                                                          known_anchor_html=link.decode_contents(),
+                                                                          additional_blocks=other_article_html_examples),
+                                              model_size="large")
+                anchor_selector = json.loads(clean_json_response(response)).get("anchor_selector", "")
                 return {"url": full_url, "anchor_selector": anchor_selector}
 
         logger.warning("No main page identified.")
         return {}
 
-    def create_main_prompt(self, html: str) -> str:
+    def create_main_prompt(self, html: str) -> list:
         """
         Create the LLM prompt for analyzing the main HTML structure.
         """
-        return f"""
+        prompt = f"""
         You are assisting in analyzing an HTML document to help an automated HTML parser process the page.
         The parser uses CSS selectors in Python to extract the necessary information.
 
@@ -162,9 +165,14 @@ class LlmBasedSourceAnalyzer:
         {html}
         ```
         """
+        return [
+            {"role": "system",
+             "content": "You are an assistant helping analyze HTML documents for article extraction."},
+            {"role": "user", "content": prompt}
+        ]
 
     def refine_anchor_selector(self, known_article_block: str, known_anchor_html: str,
-                               additional_blocks: List[str]) -> str:
+                               additional_blocks: List[str]) -> list:
         """
         Uses GPT to refine the anchor selector for articles based on a known example and structurally similar blocks.
         """
@@ -213,36 +221,17 @@ Validation Examples:
 	2.	Selector div > a is valid if it targets the <a> tag and works for all provided examples.
 	3.	Selector a:has(h2) is valid if the <a> contains an <h2>.
 """
-        response = self.query_llm(prompt, role="assistant", model='gpt-4o-mini')
-        try:
-            result = json.loads(clean_json_response(response))
-            return result.get("anchor_selector", "")
-        except (json.JSONDecodeError, KeyError):
-            logger.error(f"Failed to refine anchor selector: {response}")
-            return ""
+        return [
+            {"role": "system",
+             "content": "You are an assistant helping analyze HTML documents for article extraction."},
+            {"role": "user", "content": prompt}
+        ]
 
     def fetch_html(self, url: str):
         response = requests.get(url, timeout=10)
         if response.status_code != 200:
             raise Exception(f"Failed to fetch HTML content. Status code: {response.status_code}")
         return response
-
-    def query_llm(self, prompt: str, role: str = "user", model: str = "gpt-3.5-turbo") -> str:
-        """
-        Queries the LLM for analyzing the HTML.
-        """
-        messages = [
-            {"role": "system",
-             "content": "You are an assistant helping analyze HTML documents for article extraction."},
-            {"role": role, "content": prompt}
-        ]
-        response = client.chat.completions.create(
-            model=model,
-            messages=messages
-        )
-        raw_content = response.choices[0].message.content
-        time.sleep(120)
-        return raw_content
 
     def titles_are_similar(self, title1: str, title2: str) -> bool:
         """

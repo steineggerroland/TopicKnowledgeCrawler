@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from functools import reduce
 from logging import DEBUG
 
@@ -82,7 +83,7 @@ class LlmPrompter:
         except Exception as e:
             logger.error("Failed to summarize text: %s", e)
 
-    def _summarize_text(self, big_ollama_model,  text, old_text):
+    def _summarize_text(self, big_ollama_model, text, old_text):
         def is_answer_correct(answer):
             return answer and "teaser" in answer and "summary_long" in answer
 
@@ -93,9 +94,12 @@ class LlmPrompter:
         while not is_answer_correct(summary) and trials < MAX_TRIALS_PER_REQUEST:
             try:
                 response = chat(model=big_ollama_model,
-                        messages=[{"role": "system", "content": "You are an incredible, successful content creator."},
-                                  {"role": "system", "content": self._build_teaser_and_summary_system_prompt(text, None)},
-                                  {"role": "user", "content": self._build_teaser_and_summary_user_prompt(text, None)}],
+                                messages=[
+                                    {"role": "system", "content": "You are an incredible, successful content creator."},
+                                    {"role": "system",
+                                     "content": self._build_teaser_and_summary_system_prompt(text, None)},
+                                    {"role": "user",
+                                     "content": self._build_teaser_and_summary_user_prompt(text, None)}],
                                 options={'temperature': 0.5})
                 logger.debug("Summary response: %s", response)
                 summary = json.loads(clean_json_response(response.message.content))
@@ -204,6 +208,7 @@ class LlmPrompter:
         You are a successful content creator who transforms educational content into engaging and well-organized summaries.
 
         '''
+
     def _build_teaser_and_summary_user_prompt(self, text, old_text):
         changes_attribute_text = '"changes": "..."'
         return f'''
@@ -226,7 +231,6 @@ class LlmPrompter:
         {"4. Describe changes between the old and new text if applicable." if old_text else ""}
         '''
 
-
     def _build_serioussnessrating_prompt(self, text):
         return f'''
         You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following article and:
@@ -243,3 +247,45 @@ class LlmPrompter:
             "seriousness_rating": "high/medium/low"
         }}
         '''
+
+    def query(self, messages, model_size):
+        if self.provider_name == "openai":
+            return self._query_openai(messages, model_size)
+        elif self.provider_name == "ollama":
+            return self._query_ollama(messages, model_size)
+        else:
+            raise ValueError(f"Unsupported LLM provider: {self.provider_name}")
+
+    def _query_openai(self, messages, model_size):
+        """
+        Queries the ChatGPT with the prompt.
+        """
+        try:
+            model = "gpt-4o-mini" if model_size == "large" else "gpt-3.5-turbo"
+
+            response = self.client.chat.completions.create(
+                model=model,
+                messages=messages
+            )
+            if model_size == "large":
+                time.sleep(120)  # avoid rate limit for large models
+            raw_content = response.choices[0].message.content
+            return raw_content
+        except (json.JSONDecodeError, KeyError):
+            logger.error(f"Failed to query llm: {response}")
+            return ""
+
+    def _query_ollama(self, messages, model_size):
+        """
+        Queries the ChatGPT with the prompt.
+        """
+        try:
+            model = "qwen2.5:14b" if model_size == "large" else "qwen2.5"
+            response = chat(model=model,
+                            messages=messages)
+            logger.debug("Rating response: %s", response)
+            result = response.message.content
+            return result
+        except (json.JSONDecodeError, KeyError):
+            logger.error(f"Failed to query llm: {response}")
+            return ""
