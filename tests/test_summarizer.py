@@ -7,8 +7,8 @@ from src.crawler.utils.text_processor import calculate_hash
 
 
 @patch(
-    "src.crawler.summarizer.client.chat.completions.create",
-    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test", "summary_long": "Long text", "category": "[\\"Test\\", \\"TDD\\"]", "tags": "[\\"Testing\\",\\"Test\\"]", "seriousness_rating": "low"}'))]),
+    "src.crawler.summarizer.llm_prompter.summarize_article_json",
+    return_value={"teaser": "test", "summary_long": "Long text", "category": ["factual information"], "tags": ["Testing","Test"], "seriousness_rating": "low"},
 )
 class TestSummarizerBasicFunctionality(unittest.TestCase):
 
@@ -34,8 +34,8 @@ class TestSummarizerBasicFunctionality(unittest.TestCase):
 
 
 @patch(
-    "src.crawler.summarizer.client.chat.completions.create",
-    return_value=MagicMock(choices=[MagicMock(message=MagicMock(content='{"teaser": "test"}'))]),
+    "src.crawler.summarizer.llm_prompter.summarize_article_json",
+    return_value={"teaser": "test", "summary_long": "Long text", "category": ["factual information"], "tags": ["Testing","Test"], "seriousness_rating": "low"},
 )
 class TestSummarizerHashAndHistory(unittest.TestCase):
 

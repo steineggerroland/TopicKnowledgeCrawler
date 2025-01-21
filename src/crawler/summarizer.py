@@ -4,18 +4,18 @@ import os
 from datetime import datetime
 
 from dotenv import load_dotenv
-from openai import OpenAI
 
+from src.crawler.utils.llm_prompter import LlmPrompter
 from src.crawler.utils.logger import getLogger
-from src.crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)
 
 load_dotenv()
+LLM_PROVIDER_NAME = os.getenv("LLM_PROVIDER", "ollama")  # Default to OpenAI
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=openai_api_key)
+# Initialize the LLM prompter
+llm_prompter = LlmPrompter(LLM_PROVIDER_NAME)
 
 
 def load_summary_history(history_file):
@@ -38,67 +38,6 @@ def load_markdown_content(markdown_path):
         with open(markdown_path, "r", encoding="utf-8") as file:
             return file.read()
     return None
-
-
-def summarize_article_json(text, old_text=None):
-    """Summarizes the article into JSON format using OpenAI's GPT model."""
-    changes_attribute_text = "\"changes\": \"...\""
-    prompt = f'''
-    You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following article and:
-    1. Provide a short teaser of no more than 200 characters to intrigue the reader.
-    2. Summarize the article in an engaging and concise tone, while maintaining its unique style (e.g., factual, humorous, or critical).
-    3. Categorize the article into one or more of the following categories: ["factual information", "expert opinions", "debates and discussions", "entertainment/personal", "miscellaneous"].
-    4. Assign a seriousness rating to the article based on its credibility and reliability:
-        • High: Credible and well-founded (e.g., academic articles, scientific studies).
-        • Medium: Solid, but subjective or less verified (e.g., expert opinions, journalistic articles).
-        • Low: Poorly founded, polemical, or possibly inaccurate (e.g., Reddit discussions, blog rants).
-    5. Add relevant tags or keywords that describe the article content.
-    {"6. Describe changes between the old and new text if applicable." if old_text else ""}
-
-    Return your response as a JSON object in this exact format:
-    {{
-        "teaser": "...",
-        "summary_long": "...",
-        "category": ["..."],
-        "tags": ["...", "..."],
-        "seriousness_rating": "high/medium/low"{"," if old_text else ""}
-        {changes_attribute_text if old_text else ""}
-    }}
-
-    Article Text: {text}
-
-    {"Old Text: " + old_text if old_text else ""}
-    '''
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a creative summarization assistant and expert content analyst."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-    except Exception as exception:
-        if 'context_length_exceeded' in str(exception):
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system",
-                     "content": "You are a creative summarization assistant and expert content analyst."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-        else:
-            raise exception
-
-    raw_content = response.choices[0].message.content
-    cleaned_content = clean_json_response(raw_content)
-
-    try:
-        return json.loads(cleaned_content)
-    except json.JSONDecodeError as e:
-        logger.error("Failed to decode JSON response: %s", e)
-        return None
 
 
 def process_raw_data(input_path, output_path, history_entry):
@@ -142,8 +81,9 @@ def process_raw_data(input_path, output_path, history_entry):
 
         try:
             # Generate JSON summary
-            summary_json = summarize_article_json(markdown_content, old_text=previous_text)
-            assert all(key in summary_json for key in ["teaser", "summary_long", "category", "tags", "seriousness_rating"])
+            summary_json = llm_prompter.summarize_article_json(markdown_content, old_text=previous_text)
+            assert all(
+                key in summary_json for key in ["teaser", "summary_long", "category", "tags", "seriousness_rating"])
 
             if summary_json:
                 entry.update(summary_json)
@@ -182,10 +122,13 @@ def process_article(article_id):
 if __name__ == "__main__":
     os.makedirs(os.path.dirname(PROCESSED_DATA_FOLDER), exist_ok=True)
     # Load history
-    with multiprocessing.Pool() as pool:
-        results = pool.map(process_article, list(
-            map(lambda f: f[0:-5], filter(lambda f: f.endswith(".json"), os.listdir(RAW_DATA_FOLDER)))))
-        for result in list(filter(lambda r: r["entry"], results)):
-            history[result["id"]] = result["entry"]
-
-    save_summary_history(history, HISTORY_FILE)
+    try:
+        with multiprocessing.Pool(processes=1) as pool:
+            results = pool.map(process_article, list(
+                map(lambda f: f[0:-5], filter(lambda f: f.endswith(".json"), os.listdir(RAW_DATA_FOLDER)))))
+            for result in list(filter(lambda r: r["entry"], results)):
+                history[result["id"]] = result["entry"]
+    except KeyboardInterrupt:
+        logger.error("Stopping summarizing articles.")
+    finally:
+        save_summary_history(history, HISTORY_FILE)
