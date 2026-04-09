@@ -1,3 +1,9 @@
+"""
+Lokaler Batch-Summarizer mit Datei ``data/summary_history.json``.
+
+Für n8n: Zwischenstände in einer Data Table und LLM in AI Nodes; siehe ``n8n/README.md``.
+"""
+
 import json
 import multiprocessing
 import os
