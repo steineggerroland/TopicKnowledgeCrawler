@@ -4,13 +4,13 @@ import os
 
 import tldextract
 
-from src.crawler.fetchers.html_fetcher import HtmlFetcher
-from src.crawler.fetchers.podcast_fetcher import PodcastFetcher
-from src.crawler.fetchers.rss_fetcher import RssFetcher
-from src.crawler.utils.logger import getLogger
-from src.crawler.utils.text_processor import sanitize_string
-from src.crawler.analyzer.source_analyzer import SourceAnalyzer
-from src.crawler.utils.text_processor import calculate_hash
+from crawler.fetchers.html_fetcher import HtmlFetcher
+from crawler.fetchers.podcast_fetcher import PodcastFetcher
+from crawler.fetchers.rss_fetcher import RssFetcher
+from crawler.utils.logger import getLogger
+from crawler.utils.text_processor import sanitize_string
+from crawler.analyzer.source_analyzer import SourceAnalyzer
+from crawler.utils.text_processor import calculate_hash
 
 CONFIG_FILE = "config/sources.json"
 DATA_DIR = "data/raw"

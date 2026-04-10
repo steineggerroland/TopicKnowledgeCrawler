@@ -32,5 +32,5 @@
 ## Bestehendes Repo
 
 - Crawl-Implementierung: weiterhin `src/crawler/fetchers/*`.
-- Neue Schicht: `src/crawler/n8n_compat/` (crawlKey, Data-Table-Zeile → Source, Fetch, infl0-Body).
+- Paket `tkcrawler` (`src/tkcrawler/`): crawlKey, Data-Table-Zeile → Source, Fetch, infl0-Body; Crawl-Logik bleibt in `crawler` (`src/crawler/`).
 - `collector.py` / `summarizer.py` bleiben für **lokale** Läufe nutzbar; n8n ersetzt den Orchestrierungs- und LLM-Teil.

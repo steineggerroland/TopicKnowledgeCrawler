@@ -1,6 +1,6 @@
 import requests
-from src.crawler.analyzer.llm_based_source_analyzer import LlmBasedSourceAnalyzer
-from src.crawler.utils.logger import getLogger
+from crawler.analyzer.llm_based_source_analyzer import LlmBasedSourceAnalyzer
+from crawler.utils.logger import getLogger
 
 # Initialize logger
 logger = getLogger(__name__)

@@ -15,14 +15,14 @@ Orchestrierung mit **n8n**: Quellen in einer **Data Table**, Zwischenstände in 
 
 ## Python-Module im Repo
 
-`src/crawler/n8n_compat/` (Untermodule importieren, kein schwerer Import über `__init__`):
+Paket **`tkcrawler`** unter `src/tkcrawler/` (installiert mit Root-`pyproject.toml`):
 
-- `crawl_key.normalize_feed_url` – analog infl0 `feed-url.ts`
-- `datatable.row_to_source` – Data-Table-Zeile → Dict wie `sources.json`
-- `fetch.fetch_entries_for_source` – `RssFetcher` / `HtmlFetcher` / `PodcastFetcher`
-- `infl0_payload.finalize_entry_metadata` / `build_ingest_body` – `POST /api/crawler/ingest`
+- `tkcrawler.crawl_key.normalize_feed_url` – analog infl0 `feed-url.ts`
+- `tkcrawler.datatable.row_to_source` – Data-Table-Zeile → Dict wie `sources.json`
+- `tkcrawler.fetch.fetch_entries_for_source` – nutzt Paket **`crawler`** (`src/crawler/…`)
+- `tkcrawler.infl0_payload` – `POST /api/crawler/ingest`
 
-Tests: `pytest tests/test_n8n_compat.py`
+Tests: `pytest tests/test_tkcrawler.py`
 
 ## Lokaler Legacy-Pfad
 

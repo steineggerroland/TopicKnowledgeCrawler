@@ -2,8 +2,8 @@ import hashlib
 
 import feedparser
 
-from src.crawler.fetchers.html_fetcher import HtmlFetcher  # For the static markdown generation
-from src.crawler.utils.logger import getLogger
+from crawler.fetchers.html_fetcher import HtmlFetcher  # For the static markdown generation
+from crawler.utils.logger import getLogger
 
 # Initialize logger
 logger = getLogger(__name__)

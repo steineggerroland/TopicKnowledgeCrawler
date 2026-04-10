@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from src.crawler.n8n_compat.crawl_key import normalize_feed_url
-from src.crawler.n8n_compat.datatable import row_to_source
-from src.crawler.n8n_compat.infl0_payload import build_ingest_body, finalize_entry_metadata
+from tkcrawler.crawl_key import normalize_feed_url
+from tkcrawler.datatable import row_to_source
+from tkcrawler.infl0_payload import build_ingest_body, finalize_entry_metadata
 
 
 def test_normalize_feed_url_trailing_slash_and_hash():

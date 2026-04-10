@@ -1,19 +1,18 @@
 # n8n → Code → Python
 # Baut den JSON-Body für POST /api/crawler/ingest.
 #
-# Erwartet im Item-JSON:
-#   crawl_key, article (dict mit id, title, link, …, content_md)
-# Optional enrichment (von AI + Data Table): teaser, summary_long, category, tags, seriousness_rating
-# Env: TOPIC_CRAWLER_ROOT = Repo-Root (Ordner mit src/).
+# Env: TOPIC_CRAWLER_ROOT = Repo-Root (mit `src/tkcrawler`).
 
 import os
 import sys
 
 _ROOT = os.environ.get("TOPIC_CRAWLER_ROOT", "/data/TopicKnowledgeCrawler")
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+_SRC = os.path.join(_ROOT, "src")
+for p in (_SRC, _ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from src.crawler.n8n_compat.infl0_payload import build_ingest_body
+from tkcrawler.infl0_payload import build_ingest_body
 
 out = []
 for item in items:

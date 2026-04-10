@@ -1,16 +1,19 @@
 # n8n → Code → Python
 # Ein Item pro Data-Table-Zeile (crawl_sources). Setzt crawl_key falls leer.
 #
-# Env: TOPIC_CRAWLER_ROOT = Repo-Root (Ordner mit src/). Alternativ PYTHONPATH setzen.
+# Env: TOPIC_CRAWLER_ROOT = Repo-Root (Ordner mit Unterordner `src/`).
+# Ohne pip install: sys.path enthält …/src für `import tkcrawler`.
 
 import os
 import sys
 
 _ROOT = os.environ.get("TOPIC_CRAWLER_ROOT", "/data/TopicKnowledgeCrawler")
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+_SRC = os.path.join(_ROOT, "src")
+for p in (_SRC, _ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from src.crawler.n8n_compat.crawl_key import normalize_feed_url
+from tkcrawler.crawl_key import normalize_feed_url
 
 out = []
 for item in items:

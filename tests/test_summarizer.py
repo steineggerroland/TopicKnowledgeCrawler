@@ -2,12 +2,12 @@ import unittest
 from datetime import datetime
 from unittest.mock import patch, mock_open, MagicMock
 
-from src.crawler.summarizer import process_raw_data
-from src.crawler.utils.text_processor import calculate_hash
+from crawler.summarizer import process_raw_data
+from crawler.utils.text_processor import calculate_hash
 
 
 @patch(
-    "src.crawler.summarizer.llm_prompter.summarize_article_json",
+    "crawler.summarizer.llm_prompter.summarize_article_json",
     return_value={"teaser": "test", "summary_long": "Long text", "category": ["factual information"], "tags": ["Testing","Test"], "seriousness_rating": "low"},
 )
 class TestSummarizerBasicFunctionality(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestSummarizerBasicFunctionality(unittest.TestCase):
 
 
 @patch(
-    "src.crawler.summarizer.llm_prompter.summarize_article_json",
+    "crawler.summarizer.llm_prompter.summarize_article_json",
     return_value={"teaser": "test", "summary_long": "Long text", "category": ["factual information"], "tags": ["Testing","Test"], "seriousness_rating": "low"},
 )
 class TestSummarizerHashAndHistory(unittest.TestCase):
@@ -48,7 +48,7 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
         entry = {"id": "1", "content_hash": "hash123"}
         history = {"hash": "hash123"}
         with patch("json.load", side_effect=[entry]), patch(
-                "src.crawler.summarizer.logger.info") as mock_logger:
+                "crawler.summarizer.logger.info") as mock_logger:
             # When
             process_raw_data(input_path, output_path, history)
 
@@ -64,7 +64,7 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
         entry = {"id": "1", "title": "Title", "content_hash": "hash123"}
         history = {"hash": calculate_hash("Old content.")}
         with patch("json.load", side_effect=[entry]), patch(
-                "src.crawler.summarizer.logger.info") as mock_logger:
+                "crawler.summarizer.logger.info") as mock_logger:
             # When
             process_raw_data(input_path, output_path, history)
 

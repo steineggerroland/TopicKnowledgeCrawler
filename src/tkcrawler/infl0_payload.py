@@ -8,7 +8,7 @@ from typing import Any, Mapping
 
 import tldextract
 
-from src.crawler.utils.text_processor import calculate_hash
+from crawler.utils.text_processor import calculate_hash
 
 
 def finalize_entry_metadata(entry: Mapping[str, Any], *, source_type: str, source_feed_url: str) -> dict[str, Any]:

@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from ollama import chat
 from openai import OpenAI
 
-from src.crawler.utils.logger import getLogger
-from src.crawler.utils.text_processor import clean_json_response
+from crawler.utils.logger import getLogger
+from crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)

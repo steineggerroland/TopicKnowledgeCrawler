@@ -1,1 +1,1 @@
-# Package `src.crawler` (TopicKnowledgeCrawler).
+# Package `crawler` (TopicKnowledgeCrawler).

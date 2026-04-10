@@ -36,7 +36,7 @@ Ein **Content Collector** zur automatisierten Sammlung und Aufbereitung von Info
 
 ## n8n-Orchestrierung
 
-Workflow mit **Data Tables**, **Python Code Nodes** und **AI Nodes** (ohne `summary_history.json`) ist unter [`n8n/README.md`](n8n/README.md) beschrieben. Python-Hilfen: `src/crawler/n8n_compat/`.
+Workflow mit **Data Tables**, **Python Code Nodes** und **AI Nodes** (ohne `summary_history.json`) ist unter [`n8n/README.md`](n8n/README.md) beschrieben. Python-Paket für n8n: **`tkcrawler`** (`src/tkcrawler/`).
 
 ## Ausführung
 

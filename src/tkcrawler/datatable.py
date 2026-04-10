@@ -34,7 +34,7 @@ def row_to_source(row: Mapping[str, Any]) -> dict:
 
 def row_with_crawl_key(row: Mapping[str, Any]) -> dict:
     """Ergänzt crawl_key aus url, falls nicht gesetzt (für Abgleich mit infl0 user_feeds)."""
-    from src.crawler.n8n_compat.crawl_key import normalize_feed_url
+    from tkcrawler.crawl_key import normalize_feed_url
 
     out = dict(row)
     ck = (out.get("crawl_key") or "").strip()

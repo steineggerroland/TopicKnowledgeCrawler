@@ -3,8 +3,8 @@ import logging
 
 import feedparser
 
-from src.crawler.fetchers.html_fetcher import HtmlFetcher
-from src.crawler.utils import text_processor
+from crawler.fetchers.html_fetcher import HtmlFetcher
+from crawler.utils import text_processor
 
 # Initialize logger
 logger = logging.getLogger(__name__)

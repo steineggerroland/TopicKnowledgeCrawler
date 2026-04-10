@@ -19,7 +19,7 @@ CRAWLER_HOST_PATH=/home/infl0/crawler
 
 Siehe [`docker-compose.server.example.yaml`](docker-compose.server.example.yaml):
 
-- **`TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler`** und **`PYTHONPATH`** im `x-shared`-Block
+- **`TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler`** (Repo-Root; darunter liegt `src/tkcrawler` und `src/crawler`)
 - **Volume** `${CRAWLER_HOST_PATH}:/data/TopicKnowledgeCrawler:ro` auf **`n8n`** und **`n8n-worker`** (Python Task Runner)
 
 Passe deine bestehende `docker-compose.yaml` entsprechend an (oder merge per Diff).
@@ -37,15 +37,13 @@ wobei `crawler-requirements.txt` eine Kopie von `n8n/requirements-n8n.txt` aus d
 
 Ohne diese Pakete schlagen Python Code Nodes mit `import feedparser` / `trafilatura` fehl.
 
-### 4b) Projekt als Paket + Allowlist `src`
-
-n8n erlaubt **keine** freien Imports von `PYTHONPATH` allein: `src.crawler…` muss als **installiertes** Paket erkennbar sein.
+### 4b) `pip install -e` + Allowlist `tkcrawler` und `crawler`
 
 ```bash
 pip install --no-cache-dir -e /data/TopicKnowledgeCrawler
 ```
 
-Dann **`N8N_RUNNERS_EXTERNAL_ALLOW`** mit Top-Level-Name **`src`** (nicht `src.crawler.n8n_compat…`). Details: [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md).
+Dann **`N8N_RUNNERS_EXTERNAL_ALLOW`** mit **`tkcrawler`** und **`crawler`** (Top-Level-Module). Details: [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md).
 
 ## 5) infl0 (optional in n8n Env)
 

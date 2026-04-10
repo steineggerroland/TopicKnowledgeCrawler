@@ -2,19 +2,20 @@
 # Pro Eingabe-Item (eine Quellen-Zeile): holt Einträge per RSS/HTML/Podcast-Fetcher,
 # gibt viele Items zurück (je ein Artikel).
 #
-# Erwartetes Input-JSON pro Item: name, type, url, optional configuration_json, crawl_key.
-# Env: TOPIC_CRAWLER_ROOT = Repo-Root (Ordner mit src/).
+# Env: TOPIC_CRAWLER_ROOT = Repo-Root (mit `src/tkcrawler` und `src/crawler`).
 
 import os
 import sys
 
 _ROOT = os.environ.get("TOPIC_CRAWLER_ROOT", "/data/TopicKnowledgeCrawler")
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+_SRC = os.path.join(_ROOT, "src")
+for p in (_SRC, _ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from src.crawler.n8n_compat.datatable import row_to_source, row_with_crawl_key
-from src.crawler.n8n_compat.fetch import fetch_entries_for_source
-from src.crawler.n8n_compat.infl0_payload import finalize_entry_metadata
+from tkcrawler.datatable import row_to_source, row_with_crawl_key
+from tkcrawler.fetch import fetch_entries_for_source
+from tkcrawler.infl0_payload import finalize_entry_metadata
 
 out = []
 for item in items:

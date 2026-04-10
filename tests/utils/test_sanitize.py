@@ -1,4 +1,4 @@
-from src.crawler.utils.text_processor import sanitize_string
+from crawler.utils.text_processor import sanitize_string
 
 
 def test_sanitize_filename():

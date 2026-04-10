@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, Mock
-from src.crawler.fetchers.podcast_fetcher import PodcastFetcher
+from crawler.fetchers.podcast_fetcher import PodcastFetcher
 
 
 class TestPodcastFetcher(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestPodcastFetcher(unittest.TestCase):
         }
 
     @patch("feedparser.parse")
-    @patch("src.crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
+    @patch("crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
     def test_happy_path_all_entries_fetched(self, mock_markdown, mock_feedparser):
         # Given
         mock_feedparser.return_value.entries = [
@@ -55,7 +55,7 @@ class TestPodcastFetcher(unittest.TestCase):
         self.assertEqual(len(entries), 0)
 
     @patch("feedparser.parse")
-    @patch("src.crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
+    @patch("crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
     def test_entry_without_content(self, mock_markdown, mock_feedparser):
         # Given
         mock_feedparser.return_value.entries = [
@@ -70,7 +70,7 @@ class TestPodcastFetcher(unittest.TestCase):
         self.assertEqual(len(entries), 0)  # Skipped due to missing content
 
     @patch("feedparser.parse")
-    @patch("src.crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content",
+    @patch("crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content",
            side_effect=[Exception("Markdown conversion failed"), "Markdown Content"])
     def test_markdown_conversion_fails(self, mock_markdown, mock_feedparser):
         # Given
@@ -105,7 +105,7 @@ class TestPodcastFetcher(unittest.TestCase):
         self.assertEqual(entries[0]["link"], "https://example.com/1")
 
     @patch("feedparser.parse")
-    @patch("src.crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
+    @patch("crawler.fetchers.podcast_fetcher.PodcastFetcher.extract_markdown_content", return_value="Markdown Content")
     def test_validate_required_fields(self, mock_markdown, mock_feedparser):
         # Given
         mock_feedparser.return_value.entries = [

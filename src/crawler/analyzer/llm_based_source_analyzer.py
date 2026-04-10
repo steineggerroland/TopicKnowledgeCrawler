@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 from fuzzywuzzy import fuzz
 from trafilatura import extract
 
-from src.crawler.utils.llm_prompter import LlmPrompter
-from src.crawler.utils.logger import getLogger
-from src.crawler.utils.text_processor import clean_json_response
+from crawler.utils.llm_prompter import LlmPrompter
+from crawler.utils.logger import getLogger
+from crawler.utils.text_processor import clean_json_response
 
 # Initialize logger
 logger = getLogger(__name__)

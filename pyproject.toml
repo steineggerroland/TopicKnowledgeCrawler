@@ -3,9 +3,9 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "topic-knowledge-crawler"
+name = "tkcrawler"
 version = "0.1.0"
-description = "RSS/HTML crawler and n8n_compat helpers for infl0 ingest"
+description = "TopicKnowledgeCrawler: RSS/HTML crawler (crawler) + n8n/infl0 helpers (tkcrawler)"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -14,12 +14,14 @@ dependencies = [
   "Requests>=2.32",
   "tldextract>=5.1",
   "trafilatura>=2.0",
+  "openai>=1.0",
+  "python-dotenv>=1.0",
+  "ollama>=0.4",
+  "fuzzywuzzy>=0.18",
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["src*"]
-namespaces = true
-
 [tool.setuptools.package-dir]
-"" = "."
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]

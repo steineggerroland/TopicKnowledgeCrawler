@@ -6,8 +6,8 @@ from urllib.parse import urljoin, urlparse, parse_qs, urlencode, urlunparse
 import requests
 from bs4 import BeautifulSoup
 
-from src.crawler.utils import text_processor
-from src.crawler.utils.logger import getLogger
+from crawler.utils import text_processor
+from crawler.utils.logger import getLogger
 
 # Initialize logger
 logger = getLogger(__name__)

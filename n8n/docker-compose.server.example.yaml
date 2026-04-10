@@ -31,9 +31,10 @@ x-shared: &shared
     - N8N_NATIVE_PYTHON_RUNNER=true
     - GENERIC_TIMEZONE=${TZ}
     - TZ=${TZ}
-    # TopicKnowledgeCrawler (n8n Python Code Nodes, siehe n8n/python/)
+    # TopicKnowledgeCrawler (Pakete `tkcrawler` + `crawler` unter src/)
     - TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler
-    - PYTHONPATH=/data/TopicKnowledgeCrawler
+    # Fallback ohne pip install -e: Module unter src/ finden
+    - PYTHONPATH=/data/TopicKnowledgeCrawler/src:/data/TopicKnowledgeCrawler
   links:
     - postgres
   extra_hosts:

@@ -4,7 +4,7 @@ Jede Datei ist so gedacht, dass du den **Inhalt** (ohne führende Kommentare opt
 
 ## Pfade
 
-Setze **`TOPIC_CRAWLER_ROOT`** (oder `PYTHONPATH`) auf das **Repository-Root** (Ordner mit `src/`). Beispiel Docker:
+Setze **`TOPIC_CRAWLER_ROOT`** auf das **Repository-Root** (enthält `src/tkcrawler` und `src/crawler`). Die Skripte hängen zusätzlich `…/src` an `sys.path`. Mit **`pip install -e .`** im Container ist `PYTHONPATH` optional. Beispiel Docker:
 
 ```yaml
 environment:
@@ -27,4 +27,4 @@ Vor dem HTTP-Node: Body auf `{{ $json.infl0_ingest_body }}` setzen (ggf. „JSON
 
 ## Abhängigkeiten
 
-Siehe `../requirements-n8n.txt` – im n8n-Container installieren und `PYTHONPATH=/data/TopicKnowledgeCrawler` setzen.
+Siehe `../requirements-n8n.txt` bzw. Root-`pyproject.toml` – im Runner **`pip install -e /data/TopicKnowledgeCrawler`** (empfohlen).

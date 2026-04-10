@@ -11,8 +11,8 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 
-from src.crawler.utils.llm_prompter import LlmPrompter
-from src.crawler.utils.logger import getLogger
+from crawler.utils.llm_prompter import LlmPrompter
+from crawler.utils.logger import getLogger
 
 # Initialize logger
 logger = getLogger(__name__)

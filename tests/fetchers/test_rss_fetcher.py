@@ -1,10 +1,10 @@
 import unittest
 from unittest.mock import patch, Mock
 
-from src.crawler.fetchers.rss_fetcher import RssFetcher
+from crawler.fetchers.rss_fetcher import RssFetcher
 
 
-@patch("src.crawler.fetchers.rss_fetcher.HtmlFetcher.generate_markdown_from_url")
+@patch("crawler.fetchers.rss_fetcher.HtmlFetcher.generate_markdown_from_url")
 class TestRssFetcher(unittest.TestCase):
 
     def setUp(self):
@@ -115,7 +115,7 @@ class TestRssFetcher(unittest.TestCase):
 
 
 class TestRssFetcherFails(unittest.TestCase):
-    @patch("src.crawler.fetchers.rss_fetcher.HtmlFetcher.generate_markdown_from_url",
+    @patch("crawler.fetchers.rss_fetcher.HtmlFetcher.generate_markdown_from_url",
            side_effect=[Exception("Failed"), "Markdown Content"])
     @patch("feedparser.parse")
     def test_one_entry_fails_during_content_extraction(self, mock_parse, mock_md_generator):

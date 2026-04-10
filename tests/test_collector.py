@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from src.crawler.collector import process_source, SavingEntryFailed
+from crawler.collector import process_source, SavingEntryFailed
 
 DATA_DIR = "data/raw"
 
@@ -35,8 +35,8 @@ def mock_entry():
 # Grouping tests by test class
 class TestRssFetcher:
     def test_happy_path(self, source_rss, mock_entry):
-        with patch("src.crawler.collector.RssFetcher") as MockRssFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.RssFetcher") as MockRssFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockRssFetcher.return_value
@@ -50,8 +50,8 @@ class TestRssFetcher:
             mock_save_entry.assert_called_once_with(mock_entry)
 
     def test_fetcher_failure(self, source_rss):
-        with patch("src.crawler.collector.RssFetcher") as MockRssFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.RssFetcher") as MockRssFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockRssFetcher.return_value
@@ -65,8 +65,8 @@ class TestRssFetcher:
             mock_save_entry.assert_not_called()
 
     def test_save_failure(self, source_rss, mock_entry):
-        with patch("src.crawler.collector.RssFetcher") as MockRssFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.RssFetcher") as MockRssFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockRssFetcher.return_value
@@ -84,8 +84,8 @@ class TestRssFetcher:
 
 class TestPodcastFetcher:
     def test_happy_path(self, source_podcast, mock_entry):
-        with patch("src.crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockPodcastFetcher.return_value
@@ -99,8 +99,8 @@ class TestPodcastFetcher:
             mock_save_entry.assert_called_once_with(mock_entry)
 
     def test_fetcher_failure(self, source_podcast):
-        with patch("src.crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockPodcastFetcher.return_value
@@ -114,8 +114,8 @@ class TestPodcastFetcher:
             mock_save_entry.assert_not_called()
 
     def test_save_failure(self, source_podcast, mock_entry):
-        with patch("src.crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.PodcastFetcher") as MockPodcastFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockPodcastFetcher.return_value
@@ -133,8 +133,8 @@ class TestPodcastFetcher:
 
 class TestHtmlFetcher:
     def test_happy_path(self, source_html, mock_entry):
-        with patch("src.crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockHtmlFetcher.return_value
@@ -148,8 +148,8 @@ class TestHtmlFetcher:
             mock_save_entry.assert_called_once_with(mock_entry)
 
     def test_fetcher_failure(self, source_html):
-        with patch("src.crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockHtmlFetcher.return_value
@@ -163,8 +163,8 @@ class TestHtmlFetcher:
             mock_save_entry.assert_not_called()
 
     def test_save_failure(self, source_html, mock_entry):
-        with patch("src.crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
-                "src.crawler.collector.save_entry"
+        with patch("crawler.collector.HtmlFetcher") as MockHtmlFetcher, patch(
+                "crawler.collector.save_entry"
         ) as mock_save_entry:
             # Given
             mock_fetcher = MockHtmlFetcher.return_value
