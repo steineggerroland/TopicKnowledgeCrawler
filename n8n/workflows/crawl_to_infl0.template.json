@@ -1,0 +1,378 @@
+{
+  "name": "TopicKnowledgeCrawler -> infl0 (template)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1260,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (hourly)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1260,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "append"
+      },
+      "id": "merge-triggers",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1040,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Template source loader.\\n// Preferred: replace this node with n8n Data Table node reading `crawl_sources`.\\n// Fallback: set env CRAWL_SOURCES_JSON to an array of source rows.\\nconst envJson = $env.CRAWL_SOURCES_JSON || '[]';\\nlet rows = [];\\ntry {\\n  rows = JSON.parse(envJson);\\n} catch (e) {\\n  throw new Error('CRAWL_SOURCES_JSON is not valid JSON');\\n}\\nif (!Array.isArray(rows) || rows.length === 0) {\\n  throw new Error('No sources provided. Replace this node with Data Table `crawl_sources` read or set CRAWL_SOURCES_JSON');\\n}\\nreturn rows.map((r) => ({ json: r }));"
+      },
+      "id": "load-sources",
+      "name": "Load Sources (template)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-sources",
+      "name": "Split Sources",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -580,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "python",
+        "pythonCode": "import os\\nimport sys\\n\\n_ROOT = os.environ.get(\"TOPIC_CRAWLER_ROOT\", \"/data/TopicKnowledgeCrawler\")\\nif _ROOT not in sys.path:\\n    sys.path.insert(0, _ROOT)\\n\\nfrom src.crawler.n8n_compat.datatable import row_to_source, row_with_crawl_key\\nfrom src.crawler.n8n_compat.fetch import fetch_entries_for_source\\nfrom src.crawler.n8n_compat.infl0_payload import finalize_entry_metadata\\n\\nout = []\\nfor item in items:\\n    row = row_with_crawl_key(item[\"json\"])\\n    source = row_to_source(row)\\n    crawl_key = row[\"crawl_key\"]\\n    try:\\n        entries = fetch_entries_for_source(source)\\n    except Exception as exc:\\n        out.append({\"json\": {\"crawl_key\": crawl_key, \"source_name\": source.get(\"name\"), \"fetch_error\": str(exc)}})\\n        continue\\n\\n    for entry in entries:\\n        full = finalize_entry_metadata(entry, source_type=source[\"type\"], source_feed_url=source[\"url\"])\\n        out.append({\"json\": {\\n            \"crawl_key\": crawl_key,\\n            \"source_name\": source.get(\"name\"),\\n            \"article_id\": full.get(\"id\"),\\n            \"content_hash\": full.get(\"content_hash\"),\\n            \"article\": full,\\n            \"content_md\": full.get(\"content_md\"),\\n        }})\\n\\nreturn out"
+      },
+      "id": "python-fetch-expand",
+      "name": "Python: Fetch + Expand",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -360,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "has-fetch-error",
+              "leftValue": "={{ $json.fetch_error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-fetch-error",
+      "name": "IF fetch_error",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -140,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Keep errors visible in executions, but do not fail the whole workflow.\\nfor (const item of items) {\\n  console.log('Fetch error:', item.json);\\n}\\nreturn [];"
+      },
+      "id": "log-fetch-errors",
+      "name": "Log Fetch Errors",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "// Replace this with an AI node (OpenAI/Basic LLM Chain) + Data Table hash lookup.\\n// Current fallback keeps article flowing even without enrichment.\\nconst j = $json;\\nreturn [{\\n  json: {\\n    ...j,\\n    teaser: j.teaser ?? '',\\n    summary_long: j.summary_long ?? '',\\n    category: Array.isArray(j.category) ? j.category : [],\\n    tags: Array.isArray(j.tags) ? j.tags : [],\\n    seriousness_rating: j.seriousness_rating ?? 'medium',\\n  }\\n}];"
+      },
+      "id": "enrichment-placeholder",
+      "name": "Enrichment Placeholder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "python",
+        "pythonCode": "import os\\nimport sys\\n\\n_ROOT = os.environ.get(\"TOPIC_CRAWLER_ROOT\", \"/data/TopicKnowledgeCrawler\")\\nif _ROOT not in sys.path:\\n    sys.path.insert(0, _ROOT)\\n\\nfrom src.crawler.n8n_compat.infl0_payload import build_ingest_body\\n\\nout = []\\nfor item in items:\\n    j = item[\"json\"]\\n    enrichment = {\\n        k: j[k]\\n        for k in (\"teaser\", \"summary_long\", \"category\", \"tags\", \"seriousness_rating\")\\n        if k in j and j[k] is not None\\n    }\\n    body = build_ingest_body(crawl_key=j[\"crawl_key\"], entry=j[\"article\"], enrichment=enrichment or None)\\n    out.append({\"json\": {\"infl0_ingest_body\": body}})\\n\\nreturn out"
+      },
+      "id": "python-build-body",
+      "name": "Python: Build infl0 body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.INFL0_BASE_URL }}/api/crawler/ingest",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.INFL0_CRAWLER_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.infl0_ingest_body }}",
+        "options": {}
+      },
+      "id": "http-ingest",
+      "name": "POST /api/crawler/ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "next-source",
+      "name": "Next Source",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        760,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Template: ersetze `Load Sources (template)` durch Data Table `crawl_sources` und `Enrichment Placeholder` durch Data-Table-Hash-Check + AI Node(s).",
+        "height": 140,
+        "width": 430,
+        "color": 7
+      },
+      "id": "note-template",
+      "name": "Notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -980,
+        40
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (hourly)": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Load Sources (template)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Sources (template)": {
+      "main": [
+        [
+          {
+            "node": "Split Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Sources": {
+      "main": [
+        [
+          {
+            "node": "Python: Fetch + Expand",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Next Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python: Fetch + Expand": {
+      "main": [
+        [
+          {
+            "node": "IF fetch_error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF fetch_error": {
+      "main": [
+        [
+          {
+            "node": "Log Fetch Errors",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enrichment Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrichment Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Python: Build infl0 body",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Python: Build infl0 body": {
+      "main": [
+        [
+          {
+            "node": "POST /api/crawler/ingest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /api/crawler/ingest": {
+      "main": [
+        [
+          {
+            "node": "Next Source",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Next Source": {
+      "main": [
+        [
+          {
+            "node": "Split Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "template-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "topic-crawler-to-infl0-template",
+  "tags": []
+}
