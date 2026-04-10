@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "topic-knowledge-crawler"
+version = "0.1.0"
+description = "RSS/HTML crawler and n8n_compat helpers for infl0 ingest"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "beautifulsoup4>=4.12",
+  "feedparser>=6.0",
+  "Requests>=2.32",
+  "tldextract>=5.1",
+  "trafilatura>=2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+namespaces = true
+
+[tool.setuptools.package-dir]
+"" = "."

@@ -37,6 +37,16 @@ wobei `crawler-requirements.txt` eine Kopie von `n8n/requirements-n8n.txt` aus d
 
 Ohne diese Pakete schlagen Python Code Nodes mit `import feedparser` / `trafilatura` fehl.
 
+### 4b) Projekt als Paket + Allowlist `src`
+
+n8n erlaubt **keine** freien Imports von `PYTHONPATH` allein: `src.crawler…` muss als **installiertes** Paket erkennbar sein.
+
+```bash
+pip install --no-cache-dir -e /data/TopicKnowledgeCrawler
+```
+
+Dann **`N8N_RUNNERS_EXTERNAL_ALLOW`** mit Top-Level-Name **`src`** (nicht `src.crawler.n8n_compat…`). Details: [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md).
+
 ## 5) infl0 (optional in n8n Env)
 
 ```env

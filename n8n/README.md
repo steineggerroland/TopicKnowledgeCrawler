@@ -11,6 +11,7 @@ Orchestrierung mit **n8n**: Quellen in einer **Data Table**, Zwischenstände in 
 5. Workflow-Template importieren → [`workflows/crawl_to_infl0.template.json`](workflows/crawl_to_infl0.template.json)
 6. Docker/n8n: Crawler einbinden → [`DOCKER_CRAWLER.md`](DOCKER_CRAWLER.md) und [`docker-compose.server.example.yaml`](docker-compose.server.example.yaml)
 7. `requirements-n8n.txt` im **Python-Runner-Image** installieren (siehe `DOCKER_CRAWLER.md`).
+8. Python-Runner-Allowlist & `pip install -e` → [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md).
 
 ## Python-Module im Repo
 
