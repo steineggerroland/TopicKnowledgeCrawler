@@ -1,0 +1,104 @@
+# n8n + Postgres (Basis: offizielles withPostgres-Beispiel) + Crawler-Mount für Python Runner
+#
+# Auf dem Server: TopicKnowledgeCrawler nach ~/crawler klonen (oder anderer Pfad).
+# In .env setzen:
+#   CRAWLER_HOST_PATH=/home/<user>/crawler
+#
+# Python-Dependencies im Runner-Image installieren (siehe n8n/requirements-n8n.txt und
+# n8n/DOCKER_CRAWLER.md) — reines :ro-Mount reicht nicht für pip install ins Image.
+
+volumes:
+  db_storage:
+
+x-shared: &shared
+  restart: always
+  env_file:
+    - .env
+  environment:
+    - NODE_FUNCTION_ALLOW_EXTERNAL=moment,lodash,webuntis,puppeteer
+    - N8N_COMMUNITY_PACKAGES_ALLOW_TOOL_USAGE=true
+    - DB_TYPE=postgresdb
+    - DB_POSTGRESDB_HOST=postgres
+    - DB_POSTGRESDB_PORT=5432
+    - DB_POSTGRESDB_DATABASE=${POSTGRES_DB}
+    - DB_POSTGRESDB_USER=${POSTGRES_NON_ROOT_USER}
+    - DB_POSTGRESDB_PASSWORD=${POSTGRES_NON_ROOT_PASSWORD}
+    - OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true
+    - N8N_RUNNERS_ENABLED=true
+    - N8N_RUNNERS_MODE=external
+    - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+    - N8N_RUNNERS_AUTH_TOKEN=${RUNNER_SECRET}
+    - N8N_NATIVE_PYTHON_RUNNER=true
+    - GENERIC_TIMEZONE=${TZ}
+    - TZ=${TZ}
+    # TopicKnowledgeCrawler (n8n Python Code Nodes, siehe n8n/python/)
+    - TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler
+    - PYTHONPATH=/data/TopicKnowledgeCrawler
+  links:
+    - postgres
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+    - "ollama-host:172.17.0.1"
+  depends_on:
+    postgres:
+      condition: service_healthy
+    eml2pdf-api:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    restart: always
+    environment:
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_DB
+      - POSTGRES_NON_ROOT_USER
+      - POSTGRES_NON_ROOT_PASSWORD
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init-data.sh:/docker-entrypoint-initdb.d/init-data.sh
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -h localhost -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 120s
+      start_period: 30s
+      start_interval: 2s
+      timeout: 5s
+      retries: 10
+
+  n8n:
+    <<: *shared
+    build: .
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+      - ${CRAWLER_HOST_PATH:?set CRAWLER_HOST_PATH in .env}:/data/TopicKnowledgeCrawler:ro
+    ports:
+      - "5678:5678"
+
+  n8n-javascript:
+    <<: *shared
+    build: ./runners
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=${RUNNER_SECRET}
+      - PUPPETEER_CACHE_DIR=/app/task-runner-javascript/.cache
+      - GENERIC_TIMEZONE=Europe/Berlin
+      - TZ=Europe/Berlin
+    command: javascript
+    depends_on:
+      - n8n
+
+  n8n-worker:
+    <<: *shared
+    build: ./runners
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_AUTH_TOKEN=${RUNNER_SECRET}
+      - GENERIC_TIMEZONE=Europe/Berlin
+      - TZ=Europe/Berlin
+    command: python
+    volumes:
+      - ${CRAWLER_HOST_PATH:?set CRAWLER_HOST_PATH in .env}:/data/TopicKnowledgeCrawler:ro
+    depends_on:
+      - n8n
+
