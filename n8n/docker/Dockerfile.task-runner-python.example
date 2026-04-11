@@ -1,0 +1,50 @@
+# Python Task Runner mit eingebautem TopicKnowledgeCrawler (editable install).
+#
+# Build aus dem Repo-Root (TopicKnowledgeCrawler):
+#
+#   docker build -f n8n/docker/Dockerfile.task-runner-python.example -t n8n-runner-python:local .
+#
+# Optional: statt COPY — Build-Args setzen und unten die GIT-Zeilen aktivieren (Netzwerk beim Build).
+
+FROM n8nio/runners:stable
+# alpine 3.22, chromium 142.x — puppeteer compatibility
+# https://pkgs.alpinelinux.org/packages?name=chromium&branch=v3.22
+# https://pptr.dev/supported-browsers
+
+USER root
+
+RUN wget -O apk.static https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic//v2.12.14/x86_64/apk.static
+RUN chmod +x apk.static
+RUN ./apk.static -X http://dl-cdn.alpinelinux.org/alpine/latest-stable/main -U --allow-untrusted add apk-tools
+RUN apk add --no-cache chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont \
+      chromium-chromedriver
+RUN apk del apk-tools
+RUN rm apk.static
+RUN chmod a+rx -R /usr/bin
+
+RUN cd /opt/runners/task-runner-javascript && pnpm add moment uuid tsdav node-fetch@2.7.0 node-ical vcard-parser
+
+# Basis-Zusatzpakete im Runner (Rest kommt über `pip install -e` aus pyproject.toml)
+RUN cd /opt/runners/task-runner-python && uv pip install numpy selenium trafilatura feedparser
+
+# Repo ins Image — Variante A: Build-Kontext = Repo-Root
+#COPY pyproject.toml README.md /opt/TopicKnowledgeCrawler/
+#COPY src /opt/TopicKnowledgeCrawler/src/
+
+# Variante B — statt COPY (auskommentieren): Clone beim Build
+ARG TKCRAWLER_GIT_URL=https://github.com/steineggerroland/TopicKnowledgeCrawler.git
+ARG TKCRAWLER_GIT_REF=main
+RUN apk add --no-cache git \
+    && git clone --depth 1 --branch "${TKCRAWLER_GIT_REF}" "${TKCRAWLER_GIT_URL}" /opt/TopicKnowledgeCrawler \
+    && apk del git
+
+RUN cd /opt/runners/task-runner-python && uv pip install -e /opt/TopicKnowledgeCrawler
+
+COPY n8n/docker/n8n-task-runners.example.json /etc/n8n-task-runners.json
+
+USER runner

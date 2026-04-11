@@ -17,6 +17,26 @@ Die bisherige Datei `summary_history.json` hielt pro Artikel den letzten `conten
 
 Der **`crawl_key`** muss exakt zu `user_feeds.crawl_key` in infl0 passieren (Nutzer trägt dieselbe Feed-URL ein).
 
+### Quellen aus infl0 synchronisieren
+
+infl0 stellt **`GET /api/crawler/sources`** bereit (wie Ingest: **`X-Crawler-Key`** oder **`Authorization: Bearer`** mit `NUXT_CRAWLER_API_KEY`).
+
+Antwort (Auszug): `sources[]` mit `crawlKey`, `feedUrl`, `displayTitle`, `subscriberCount`.
+
+**Mapping in n8n** (Data Table `crawl_sources`):
+
+| infl0-Feld | Tabellenspalte |
+|------------|----------------|
+| `crawlKey` | `crawl_key` |
+| `feedUrl` | `url` |
+| `displayTitle` | `name` (Fallback: `feedUrl` oder `crawlKey`) |
+| — | `type` zunächst leer — siehe unten |
+| — | `active` = `true` |
+
+**RSS vs. HTML und LLM (wie `SourceAnalyzer`):** infl0 speichert nur die vom Nutzer eingetragene URL — kein MIME-Type. Wie im lokalen `collector.py` solltest du **vor dem Fetch** (oder einmal nach dem Sync) klassifizieren: Request an die URL, anhand von `Content-Type` / Inhalt **`rss`** vs. **`html`** setzen; bei **HTML** ggf. **`configuration_json`** per LLM ermitteln (`crawler.analyzer.source_analyzer.SourceAnalyzer`). Snippet: `n8n/python/code_analyze_source_row.py`.
+
+Workflow-Idee: eigener Trigger (z. B. täglich oder nach Feed-Änderung) → **HTTP Request** GET → **Split out** / Schleife → **Data table → Insert or update row** mit eindeutiger Zeile pro `crawl_key` → **Code (Python)** Analyse für Zeilen ohne vollständigen `type`/`configuration` → erneut **Insert or update row**. Feeds, die Nutzer in infl0 deaktivieren (`active: false`), erscheinen nicht mehr in der Liste — bestehende Tabellenzeilen musst du ggf. separat auf `active = false` setzen oder löschen, wenn du die Tabelle strikt spiegeln willst.
+
 ## Tabelle `article_enrichment` (ersetzt Summary-History)
 
 | Spalte | Typ | Beschreibung |

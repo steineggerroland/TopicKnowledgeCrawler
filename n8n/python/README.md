@@ -20,6 +20,7 @@ Die Skripte nutzen standardmäßig `/data/TopicKnowledgeCrawler`, falls die Vari
 | Datei | Rolle |
 |--------|--------|
 | `code_normalize_crawl_key.py` | Nur `crawl_key` aus `url` berechnen (infl0-kompatibel). |
+| `code_analyze_source_row.py` | Wie `SourceAnalyzer`: `type` rss/html + bei HTML `configuration_json` (LLM). |
 | `code_fetch_expand.py` | Quelle → n Artikel (RSS/HTML/Podcast). |
 | `code_merge_enrichment_for_infl0.py` | `article` + optionale LLM-Felder → `infl0_ingest_body`. |
 

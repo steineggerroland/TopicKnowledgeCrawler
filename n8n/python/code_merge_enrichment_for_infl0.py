@@ -1,16 +1,7 @@
 # n8n → Code → Python
 # Baut den JSON-Body für POST /api/crawler/ingest.
 #
-# Env: TOPIC_CRAWLER_ROOT = Repo-Root (mit `src/tkcrawler`).
-
-import os
-import sys
-
-_ROOT = os.environ.get("TOPIC_CRAWLER_ROOT", "/data/TopicKnowledgeCrawler")
-_SRC = os.path.join(_ROOT, "src")
-for p in (_SRC, _ROOT):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# Voraussetzung: `pip install -e` des Repos im Runner-Image.
 
 from tkcrawler.infl0_payload import build_ingest_body
 

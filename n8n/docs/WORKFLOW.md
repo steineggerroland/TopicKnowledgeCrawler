@@ -7,6 +7,12 @@
 - **Sprachmodell** in n8n **AI Nodes**, nicht mehr `summarizer.py` / `LlmPrompter` zur Laufzeit.
 - **Auslieferung** an infl0 mit `POST /api/crawler/ingest` und Header `X-Crawler-Key` / `Authorization: Bearer`.
 
+## Quellen aus infl0 (optional, vor dem Crawl)
+
+- **HTTP Request** – `GET {{$env.INFL0_BASE_URL}}/api/crawler/sources`, Header wie bei Ingest (`X-Crawler-Key`).
+- Ergebnis in die Data Table **`crawl_sources`** schreiben (Insert or update pro `crawl_key`), siehe `DATA_TABLES.md` → Abschnitt „Quellen aus infl0 synchronisieren“.
+- **Anschließend** (oder für jede neue Zeile): wie lokal `SourceAnalyzer` — **`type`** (`rss` / `html`) und bei HTML **`configuration_json`** setzen (`n8n/python/code_analyze_source_row.py`), damit `code_fetch_expand.py` / `row_to_source` zuverlässig arbeiten.
+
 ## Empfohlene Node-Kette
 
 1. **Trigger** – Schedule (z. B. stündlich) oder Webhook „Run crawl“.

@@ -4,18 +4,19 @@
 
 - Variable heißt **`N8N_RUNNERS_EXTERNAL_ALLOW`** (mit **`RUNNERS`**, Plural). `N8N_RUNNER_*` ohne **s** greift nicht.
 - Die Liste ist für **Top-Level-Modulnamen** gedacht (wie nach `import x`), **nicht** für volle Pfade wie `tkcrawler.datatable`.
-- Nach **`pip install -e .`** (Root-`pyproject.toml`) gibt es u. a. **`tkcrawler`** (n8n-Helfer) und **`crawler`** (Fetcher/Utils).
+- Mit **`pip install -e .`** im Runner-Image (siehe `n8n/docker/Dockerfile.task-runner-python.example`) sind **`tkcrawler`** und **`crawler`** normale Site-Packages — keine `sys.path`-Tricks in den Code-Nodes, daher braucht es **kein** `N8N_RUNNERS_STDLIB_ALLOW=os,sys` mehr; Standard reicht (**`N8N_RUNNERS_STDLIB_ALLOW=`** leer bzw. Variable weglassen, je nach n8n-Default).
 
 ## Empfohlene Zeile (Runner-Container / task-runners)
 
 ```env
-N8N_RUNNERS_STDLIB_ALLOW=os,sys
 N8N_RUNNERS_EXTERNAL_ALLOW=tkcrawler,crawler,feedparser,trafilatura,requests,bs4,lxml,tldextract
 ```
 
 - **`tkcrawler`**: Quellen-Zeile, Fetch-Dispatch, infl0-Body.
 - **`crawler`**: `RssFetcher`, `HtmlFetcher`, Utils (`text_processor`, …).
 - **`bs4`**: Importname von `beautifulsoup4`.
+
+Sobald ein Code-Node wieder **`import os`** / **`import sys`** nutzt, musst du **`os,sys`** (oder `*`) in **`N8N_RUNNERS_STDLIB_ALLOW`** ergänzen.
 
 Nur für **vertrauenswürdige** Umgebungen:
 
@@ -29,10 +30,12 @@ N8N_RUNNERS_EXTERNAL_ALLOW=*
 
 ## Installation
 
+Im Image (empfohlen): siehe **`n8n/docker/Dockerfile.task-runner-python.example`**.
+
+Manuell im Container:
+
 ```bash
-pip install --no-cache-dir -e /data/TopicKnowledgeCrawler
+pip install --no-cache-dir -e /opt/TopicKnowledgeCrawler
 ```
 
 (`:ro`-Mount reicht: editable install schreibt nur in `site-packages`.)
-
-Ohne pip: im Code-Node **`sys.path.insert(0, os.path.join(TOPIC_CRAWLER_ROOT, "src"))`** (steht in `n8n/python/*.py` und im Workflow-Template).

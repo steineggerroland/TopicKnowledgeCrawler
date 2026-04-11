@@ -1,0 +1,8 @@
+# Für Builds mit Kontext-Root = dieses Repo, z. B.:
+# docker build -f n8n/docker/Dockerfile.task-runner-python.example .
+.git
+**/__pycache__
+**/.pytest_cache
+**/*.pyc
+.venv
+node_modules

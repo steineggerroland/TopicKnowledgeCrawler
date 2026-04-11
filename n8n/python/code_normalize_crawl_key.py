@@ -1,17 +1,7 @@
 # n8n → Code → Python
 # Ein Item pro Data-Table-Zeile (crawl_sources). Setzt crawl_key falls leer.
 #
-# Env: TOPIC_CRAWLER_ROOT = Repo-Root (Ordner mit Unterordner `src/`).
-# Ohne pip install: sys.path enthält …/src für `import tkcrawler`.
-
-import os
-import sys
-
-_ROOT = os.environ.get("TOPIC_CRAWLER_ROOT", "/data/TopicKnowledgeCrawler")
-_SRC = os.path.join(_ROOT, "src")
-for p in (_SRC, _ROOT):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# Voraussetzung: TopicKnowledgeCrawler im Runner-Image per `pip install -e` (siehe Dockerfile-Beispiel).
 
 from tkcrawler.crawl_key import normalize_feed_url
 
