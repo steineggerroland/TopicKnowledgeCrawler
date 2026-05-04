@@ -38,6 +38,10 @@ Ein **Content Collector** zur automatisierten Sammlung und Aufbereitung von Info
 
 Workflow mit **Data Tables**, **Python Code Nodes** und **AI Nodes** (ohne `summary_history.json`) ist unter [`n8n/README.md`](n8n/README.md) beschrieben. Python-Paket für n8n: **`tkcrawler`** (`src/tkcrawler/`).
 
+## Geplante Weiterentwicklung
+
+Die Zielarchitektur ist in [`docs/TARGET_ARCHITECTURE.md`](docs/TARGET_ARCHITECTURE.md) definiert. Die naechsten Schritte fuer intelligentere Source-Policies, Vorab-Skip-Logik, Rate-Limits und eine engere infl0-Integration sind in [`docs/PLANNED_CHANGES.md`](docs/PLANNED_CHANGES.md) gesammelt. Der konkrete Umsetzungsplan steht in [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
+
 ## Ausführung
 
 1. **Quellen konfigurieren**:  

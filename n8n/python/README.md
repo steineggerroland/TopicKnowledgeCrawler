@@ -24,6 +24,58 @@ Die Skripte nutzen standardmäßig `/data/TopicKnowledgeCrawler`, falls die Vari
 | `code_fetch_expand.py` | Quelle → n Artikel (RSS/HTML/Podcast). |
 | `code_merge_enrichment_for_infl0.py` | `article` + optionale LLM-Felder → `infl0_ingest_body`. |
 
+Geplante Aufteilung des groben Fetch-Schritts: siehe [`../docs/CURRENT_WORKFLOW_MIGRATION.md`](../docs/CURRENT_WORKFLOW_MIGRATION.md). Dort sind die kuenftigen Node-Vertraege fuer `analyze_source`, `inspect_source_policy`, `plan_crawl`, `list_candidates`, `filter_candidates`, `fetch_detail` und `finalize_article` beschrieben.
+
+## Portable Steps
+
+Neue portable Steps liegen unter `tkcrawler.steps` und koennen sowohl in n8n als auch per CLI genutzt werden:
+
+```bash
+python -m tkcrawler.cli.run_step normalize_source < input.json
+python -m tkcrawler.cli.run_step plan_dispatch < input.json
+python -m tkcrawler.cli.run_step build_ingest_body < input.json
+```
+
+Wichtig: In n8n werden die `*_item(...)`-Funktionen genutzt. Sie bekommen direkt `item["json"]`, also das flache Payload aus `$json`. Der portable Envelope mit `{ "item": ..., "context": ... }` ist fuer CLI/Runner gedacht, nicht fuer normale n8n-Code-Nodes.
+
+n8n-Code-Node-Beispiel fuer `normalize_source`:
+
+```python
+from tkcrawler.steps.normalize_source import normalize_source_item
+
+out = []
+for item in _items:
+    out.append({"json": normalize_source_item(item["json"])})
+return out
+```
+
+n8n-Code-Node-Beispiel fuer den Dispatch-Workflow:
+
+```python
+from tkcrawler.steps.plan_dispatch import plan_dispatch_item
+
+out = []
+for item in _items:
+    planned = plan_dispatch_item(
+        item["json"],
+        {"now": _now.isoformat(), "dispatch_mode": "scheduled"},
+    )
+    if planned["should_dispatch"]:
+        out.append({"json": planned})
+return out
+```
+
+n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
+
+```python
+from tkcrawler.steps.build_ingest_body import build_ingest_body_item
+
+out = []
+for item in _items:
+    out.append({"json": build_ingest_body_item(item["json"])})
+return out
+```
+
 Vor dem HTTP-Node: Body auf `{{ $json.infl0_ingest_body }}` setzen (ggf. „JSON“-Modus).
 
 ## Abhängigkeiten

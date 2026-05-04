@@ -13,7 +13,13 @@
 - Ergebnis in die Data Table **`crawl_sources`** schreiben (Insert or update pro `crawl_key`), siehe `DATA_TABLES.md` → Abschnitt „Quellen aus infl0 synchronisieren“.
 - **Anschließend** (oder für jede neue Zeile): wie lokal `SourceAnalyzer` — **`type`** (`rss` / `html`) und bei HTML **`configuration_json`** setzen (`n8n/python/code_analyze_source_row.py`), damit `code_fetch_expand.py` / `row_to_source` zuverlässig arbeiten.
 
+Der konkrete Source-Sync-/SourceAnalyzer-Workflow ist in [`SOURCE_SYNC_WORKFLOW.md`](SOURCE_SYNC_WORKFLOW.md) als Ist-Zustand und Zielstruktur dokumentiert.
+
 ## Empfohlene Node-Kette
+
+Die aktuelle produktive Variante und die geplante Zerlegung des grossen `Python: Fetch + Expand`-Schritts sind in [`CURRENT_WORKFLOW_MIGRATION.md`](CURRENT_WORKFLOW_MIGRATION.md) dokumentiert.
+
+Der vorgelagerte Workflow, der aktive Quellen aus `crawl_sources` liest und den Crawl-Workflow pro Quelle triggert, ist in [`CRAWL_DISPATCH_WORKFLOW.md`](CRAWL_DISPATCH_WORKFLOW.md) dokumentiert. Dort gehoert die Intervall- und Rate-Limit-Entscheidung hin.
 
 1. **Trigger** – Schedule (z. B. stündlich) oder Webhook „Run crawl“.
 2. **Data table → Get rows** – Tabelle `crawl_sources`, Filter `active` (wie von dir definiert).

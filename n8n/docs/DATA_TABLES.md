@@ -12,6 +12,21 @@ Die bisherige Datei `summary_history.json` hielt pro Artikel den letzten `conten
 | `configuration_json` | String, optional | JSON-String mit `article_selector` und `main_page_anchor_selector` für `type: html` |
 | `crawl_key` | String, optional | Wenn leer: im Workflow mit dem gleichen Algorithmus wie infl0 aus `url` berechnen (`normalize_feed_url`) |
 | `active` | Boolean, optional | `true` = verarbeiten |
+| `source_status` | String, optional | `new`, `ready`, `needs_analysis`, `analysis_failed`, `configuration_invalid`, `inactive` |
+| `analysis_error` | String, optional | Letzter Fehler aus Typ-/Source-Analyse |
+| `analysis_checked_at` | DateTime/String, optional | Wann die Quelle zuletzt analysiert wurde |
+| `configuration_status` | String, optional | `missing`, `valid`, `invalid`, `generated` |
+| `configuration_error` | String, optional | Letzter Fehler aus HTML-Selector-Validierung |
+| `subscriber_count` | Number, optional | Anzahl Abonnenten aus infl0, falls geliefert |
+| `last_seen_in_infl0_at` | DateTime/String, optional | Letzter erfolgreicher Sync aus infl0 |
+| `effective_policy_json` | String, optional | Zusammengefuehrte Policy aus Defaults, manueller Policy und erkannten Hinweisen |
+| `detected_policy_json` | String, optional | Automatisch erkannte Hinweise wie RSS `ttl`, HTTP Cache-Header, `Retry-After` |
+| `next_allowed_crawl_at` | DateTime/String, optional | Fruehester Zeitpunkt fuer den naechsten Crawl |
+| `last_crawl_started_at` | DateTime/String, optional | Startzeit des letzten Crawl-Laufs |
+| `last_crawl_finished_at` | DateTime/String, optional | Endzeit des letzten Crawl-Laufs |
+| `last_crawl_status` | String, optional | `running`, `success`, `failed`, `skipped` |
+| `last_crawl_error` | String, optional | Letzter Crawl-Fehler |
+| `last_dispatch_reason` | String, optional | Warum der Dispatcher die Quelle gestartet oder uebersprungen hat |
 
 **Workflow:** Schedule / Webhook → **Get rows** (`active = true`) → ein Item pro Zeile → Python „Fetch & expand“.
 
@@ -36,6 +51,10 @@ Antwort (Auszug): `sources[]` mit `crawlKey`, `feedUrl`, `displayTitle`, `subscr
 **RSS vs. HTML und LLM (wie `SourceAnalyzer`):** infl0 speichert nur die vom Nutzer eingetragene URL — kein MIME-Type. Wie im lokalen `collector.py` solltest du **vor dem Fetch** (oder einmal nach dem Sync) klassifizieren: Request an die URL, anhand von `Content-Type` / Inhalt **`rss`** vs. **`html`** setzen; bei **HTML** ggf. **`configuration_json`** per LLM ermitteln (`crawler.analyzer.source_analyzer.SourceAnalyzer`). Snippet: `n8n/python/code_analyze_source_row.py`.
 
 Workflow-Idee: eigener Trigger (z. B. täglich oder nach Feed-Änderung) → **HTTP Request** GET → **Split out** / Schleife → **Data table → Insert or update row** mit eindeutiger Zeile pro `crawl_key` → **Code (Python)** Analyse für Zeilen ohne vollständigen `type`/`configuration` → erneut **Insert or update row**. Feeds, die Nutzer in infl0 deaktivieren (`active: false`), erscheinen nicht mehr in der Liste — bestehende Tabellenzeilen musst du ggf. separat auf `active = false` setzen oder löschen, wenn du die Tabelle strikt spiegeln willst.
+
+Der aktuelle Source-Sync und die geplante robustere Aufteilung sind in [`SOURCE_SYNC_WORKFLOW.md`](SOURCE_SYNC_WORKFLOW.md) beschrieben. Wichtig: Quellen sollten erst nach einem erfolgreichen Sync-Lauf deaktiviert werden, nicht schon vor dem HTTP-Request, damit ein Teilfehler nicht versehentlich alle Quellen inaktiv setzt.
+
+Der Crawl-Dispatch-Workflow, der aktive/faellige Quellen aus dieser Tabelle an den eigentlichen Crawl-Workflow uebergibt, ist in [`CRAWL_DISPATCH_WORKFLOW.md`](CRAWL_DISPATCH_WORKFLOW.md) beschrieben.
 
 ## Tabelle `article_enrichment` (ersetzt Summary-History)
 
