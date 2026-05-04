@@ -4,6 +4,7 @@ import subprocess
 import sys
 from unittest.mock import Mock, patch
 
+from tkcrawler.steps.analyze_source import analyze_source_item, analyze_source_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
@@ -12,6 +13,10 @@ from tkcrawler.steps.limit_llm_items import limit_llm_items, limit_llm_items_ste
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
+from tkcrawler.steps.validate_source_configuration import (
+    validate_source_configuration_item,
+    validate_source_configuration_step,
+)
 
 
 def test_normalize_source_accepts_infl0_fields():
@@ -52,6 +57,74 @@ def test_normalize_source_step_returns_envelope():
 
     assert result["ok"] is True
     assert result["items"][0]["source_status"] == "ready"
+
+
+@patch("tkcrawler.steps.analyze_source.requests.get")
+def test_analyze_source_detects_rss(mock_get):
+    response = Mock()
+    response.headers = {"content-type": "application/rss+xml; charset=utf-8"}
+    response.text = "<rss><channel><item><title>One</title></item></channel></rss>"
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    out = analyze_source_item(
+        {"url": "https://example.com/feed"},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["type"] == "rss"
+    assert out["source_status"] == "ready"
+    assert out["analysis_error"] is None
+
+
+@patch("tkcrawler.steps.analyze_source.requests.get")
+def test_analyze_source_detects_html_needing_configuration(mock_get):
+    response = Mock()
+    response.headers = {"content-type": "text/html"}
+    response.text = "<!doctype html><html><body>Articles</body></html>"
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    out = analyze_source_item(
+        {"url": "https://example.com/articles"},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["type"] == "html"
+    assert out["source_status"] == "needs_analysis"
+    assert out["configuration_status"] == "missing"
+
+
+@patch("tkcrawler.steps.analyze_source.requests.get")
+def test_analyze_source_reports_fetch_error(mock_get):
+    mock_get.side_effect = Exception("boom")
+
+    out = analyze_source_item(
+        {"url": "https://example.com/articles"},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "analysis_failed"
+    assert "boom" in out["analysis_error"]
+
+
+@patch("tkcrawler.steps.analyze_source.requests.get")
+def test_analyze_source_step_returns_envelope(mock_get):
+    response = Mock()
+    response.headers = {"content-type": "text/html"}
+    response.text = "<html></html>"
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    result = analyze_source_step(
+        {
+            "item": {"url": "https://example.com/articles"},
+            "context": {"now": "2026-05-04T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["type"] == "html"
 
 
 def test_build_ingest_body_item_uses_flat_enrichment():
@@ -456,6 +529,79 @@ def test_list_candidates_html_passes_fair_contact_headers(mock_fetch):
             "X-Infl0-Crawler": "infl0",
         },
     )
+
+
+@patch("tkcrawler.steps.validate_source_configuration.list_candidates_items")
+def test_validate_source_configuration_marks_html_valid(mock_list):
+    mock_list.return_value = [{"candidate": {"id": "a1"}}]
+
+    out = validate_source_configuration_item(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration_json": json.dumps(
+                {"article_selector": "article", "main_page_anchor_selector": "a"}
+            ),
+        },
+        {"now": "2026-05-04T12:00:00+00:00", "sample_candidate_limit": 3},
+    )
+
+    assert out["source_status"] == "ready"
+    assert out["configuration_status"] == "valid"
+    assert out["sample_candidate_count"] == 1
+    assert mock_list.call_args.args[0]["effective_policy"]["max_candidates_per_run"] == 3
+
+
+@patch("tkcrawler.steps.validate_source_configuration.list_candidates_items", return_value=[])
+def test_validate_source_configuration_marks_empty_html_invalid(mock_list):
+    out = validate_source_configuration_item(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration_json": json.dumps(
+                {"article_selector": "article", "main_page_anchor_selector": "a"}
+            ),
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "configuration_invalid"
+    assert out["configuration_status"] == "invalid"
+    assert out["sample_candidate_count"] == 0
+
+
+def test_validate_source_configuration_accepts_rss():
+    out = validate_source_configuration_item(
+        {"crawl_key": "https://example.com/feed", "type": "rss"},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "ready"
+    assert out["configuration_error"] is None
+
+
+@patch("tkcrawler.steps.validate_source_configuration.list_candidates_items")
+def test_validate_source_configuration_step_returns_envelope(mock_list):
+    mock_list.return_value = [{"candidate": {"id": "a1"}}]
+
+    result = validate_source_configuration_step(
+        {
+            "item": {
+                "crawl_key": "https://example.com/articles",
+                "type": "html",
+                "url": "https://example.com/articles",
+                "configuration_json": json.dumps(
+                    {"article_selector": "article", "main_page_anchor_selector": "a"}
+                ),
+            },
+            "context": {"now": "2026-05-04T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["configuration_status"] == "valid"
 
 
 def test_filter_candidate_fetches_unknown_candidate():

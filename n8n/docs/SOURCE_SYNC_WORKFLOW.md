@@ -116,6 +116,20 @@ Output:
 
 Dieser Schritt sollte nur die Source-URL selbst pruefen. Bei HTML sollte er `type = html` setzen, aber die Selector-Ermittlung kann ein eigener Schritt sein.
 
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.analyze_source import analyze_source_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    out.append({"json": analyze_source_item(item["json"], {"now": now})})
+return out
+```
+
 ### `Python or AI: Analyze HTML Selectors`
 
 Input: HTML-Source ohne gueltige Konfiguration.
@@ -150,6 +164,27 @@ Output:
 ```
 
 Bei HTML sollte die Validierung nur die Listing-Seite und Kandidaten-Links pruefen, aber noch keine Detailseiten extrahieren.
+
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.validate_source_configuration import validate_source_configuration_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    out.append(
+        {
+            "json": validate_source_configuration_item(
+                item["json"],
+                {"now": now, "sample_candidate_limit": 5},
+            )
+        }
+    )
+return out
+```
 
 ## Deaktivierung nicht mehr gelieferter Quellen
 
