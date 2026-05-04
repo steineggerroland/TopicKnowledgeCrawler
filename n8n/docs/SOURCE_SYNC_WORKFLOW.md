@@ -130,9 +130,66 @@ for item in _items:
 return out
 ```
 
-### `Python or AI: Analyze HTML Selectors`
+### `Python: Prepare HTML Analysis`
 
 Input: HTML-Source ohne gueltige Konfiguration.
+
+Output:
+
+```json
+{
+  "crawl_key": "https://example.com/articles",
+  "type": "html",
+  "source_status": "needs_analysis",
+  "configuration_status": "missing",
+  "html_analysis_prompt": "Analyze this HTML listing page...",
+  "html_analysis_input": "<html>..."
+}
+```
+
+Dieser Schritt laedt die Listing-Seite, entfernt sehr laute HTML-Teile wie `script`/`style` und baut ein Prompt-Feld. Er ruft kein LLM auf.
+
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.prepare_html_analysis import prepare_html_analysis_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    out.append(
+        {
+            "json": prepare_html_analysis_item(
+                item["json"],
+                {"now": now, "max_html_chars": 30000},
+            )
+        }
+    )
+return out
+```
+
+### `n8n LLM: Analyze HTML Selectors`
+
+Input: `html_analysis_prompt` aus dem vorherigen Python-Step.
+
+Output des LLM sollte JSON sein:
+
+```json
+{
+  "article_selector": "article",
+  "main_page_anchor_selector": "a:has(h2)",
+  "confidence": "high",
+  "notes": "The listing contains repeated article cards."
+}
+```
+
+Die Modellwahl, Prompt-Varianten und Vergleichstests bleiben bewusst in n8n. Fuer Modellvergleiche kann derselbe `html_analysis_prompt` parallel an mehrere LLM-Nodes gehen.
+
+### `Python: Apply HTML Analysis`
+
+Input: Source-Zeile plus LLM-Output, zum Beispiel als `output`, `html_analysis_result`, `text` oder `response`.
 
 Output:
 
@@ -145,7 +202,21 @@ Output:
 }
 ```
 
-Dieser Schritt darf LLM-basiert sein und sollte deshalb batchbar, wiederholbar und separat fehlerbehandelbar bleiben.
+Dieser Schritt parst nur das LLM-Ergebnis und erzeugt daraus `configuration_json`. Die eigentliche Validierung passiert im naechsten Schritt.
+
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.apply_html_analysis import apply_html_analysis_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    out.append({"json": apply_html_analysis_item(item["json"], {"now": now})})
+return out
+```
 
 ### `Python: Validate Source Configuration`
 

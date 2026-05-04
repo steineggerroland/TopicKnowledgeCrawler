@@ -5,6 +5,7 @@ import sys
 from unittest.mock import Mock, patch
 
 from tkcrawler.steps.analyze_source import analyze_source_item, analyze_source_step
+from tkcrawler.steps.apply_html_analysis import apply_html_analysis_item, apply_html_analysis_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
@@ -13,6 +14,7 @@ from tkcrawler.steps.limit_llm_items import limit_llm_items, limit_llm_items_ste
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
+from tkcrawler.steps.prepare_html_analysis import prepare_html_analysis_item, prepare_html_analysis_step
 from tkcrawler.steps.validate_source_configuration import (
     validate_source_configuration_item,
     validate_source_configuration_step,
@@ -125,6 +127,126 @@ def test_analyze_source_step_returns_envelope(mock_get):
 
     assert result["ok"] is True
     assert result["items"][0]["type"] == "html"
+
+
+@patch("tkcrawler.steps.prepare_html_analysis.requests.get")
+def test_prepare_html_analysis_builds_prompt_and_compacts_html(mock_get):
+    response = Mock()
+    response.text = (
+        "<html><head><script>bad()</script></head><body>"
+        "<article><a href='/a1'><h2>Article 1</h2></a></article>"
+        "</body></html>"
+    )
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    out = prepare_html_analysis_item(
+        {"url": "https://example.com/articles"},
+        {"now": "2026-05-04T12:00:00+00:00", "max_html_chars": 200},
+    )
+
+    assert out["type"] == "html"
+    assert out["source_status"] == "needs_analysis"
+    assert "bad()" not in out["html_analysis_input"]
+    assert "article_selector" in out["html_analysis_prompt"]
+    assert "https://example.com/articles" in out["html_analysis_prompt"]
+
+
+@patch("tkcrawler.steps.prepare_html_analysis.requests.get")
+def test_prepare_html_analysis_reports_fetch_error(mock_get):
+    mock_get.side_effect = Exception("blocked")
+
+    out = prepare_html_analysis_item(
+        {"url": "https://example.com/articles"},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "analysis_failed"
+    assert "blocked" in out["analysis_error"]
+
+
+@patch("tkcrawler.steps.prepare_html_analysis.requests.get")
+def test_prepare_html_analysis_step_returns_envelope(mock_get):
+    response = Mock()
+    response.text = "<html><body><a href='/a1'><h2>A</h2></a></body></html>"
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    result = prepare_html_analysis_step(
+        {
+            "item": {"url": "https://example.com/articles"},
+            "context": {"now": "2026-05-04T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["html_analysis_prompt"]
+
+
+def test_apply_html_analysis_accepts_structured_output():
+    out = apply_html_analysis_item(
+        {
+            "url": "https://example.com/articles",
+            "output": {
+                "article_selector": "article",
+                "main_page_anchor_selector": "a:has(h2)",
+                "confidence": "high",
+                "notes": "Looks stable.",
+            },
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "needs_validation"
+    assert out["configuration_status"] == "generated"
+    assert json.loads(out["configuration_json"]) == {
+        "article_selector": "article",
+        "main_page_anchor_selector": "a:has(h2)",
+    }
+    assert out["html_analysis_confidence"] == "high"
+
+
+def test_apply_html_analysis_accepts_fenced_json_text():
+    out = apply_html_analysis_item(
+        {
+            "html_analysis_result": (
+                "```json\n"
+                "{\"article_selector\":\"article\",\"anchor_selector\":\"a\"}"
+                "\n```"
+            )
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert json.loads(out["configuration_json"])["main_page_anchor_selector"] == "a"
+
+
+def test_apply_html_analysis_marks_missing_selectors_invalid():
+    out = apply_html_analysis_item(
+        {"output": {"article_selector": "article"}},
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "configuration_invalid"
+    assert out["configuration_status"] == "invalid"
+    assert "main_page_anchor_selector" in out["configuration_error"]
+
+
+def test_apply_html_analysis_step_returns_envelope():
+    result = apply_html_analysis_step(
+        {
+            "item": {
+                "output": {
+                    "article_selector": "article",
+                    "main_page_anchor_selector": "a",
+                },
+            },
+            "context": {"now": "2026-05-04T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["configuration_status"] == "generated"
 
 
 def test_build_ingest_body_item_uses_flat_enrichment():
