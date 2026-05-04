@@ -376,6 +376,30 @@ def test_list_candidates_html_respects_max_candidates(mock_fetch):
     assert out[0]["candidate"]["title"] == "Article 1"
 
 
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value="<html><body><article><a href='/a1'><h2>Article 1</h2></a></article></body></html>",
+)
+def test_list_candidates_html_passes_policy_user_agent(mock_fetch):
+    list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration": {
+                "article_selector": "article",
+                "main_page_anchor_selector": "a",
+            },
+            "effective_policy": {"user_agent": "CustomAgent/1.0"},
+        }
+    )
+
+    mock_fetch.assert_called_once_with(
+        "https://example.com/articles",
+        headers={"User-Agent": "CustomAgent/1.0"},
+    )
+
+
 def test_filter_candidate_fetches_unknown_candidate():
     out = filter_candidate_item(
         {
@@ -464,7 +488,7 @@ def test_fetch_detail_rss_loads_detail_page(mock_markdown):
         }
     )
 
-    mock_markdown.assert_called_once_with("https://example.com/article", verify=True)
+    mock_markdown.assert_called_once_with("https://example.com/article", verify=True, headers={})
     assert out["article_id"] == "a1"
     assert out["article"]["content_md"] == "# Article\n\nBody"
     assert out["content_md"] == "# Article\n\nBody"
@@ -488,6 +512,29 @@ def test_fetch_detail_passes_verify_context(mock_markdown):
     mock_markdown.assert_called_once_with(
         "https://example.com/article",
         verify="/etc/ssl/certs/ca-certificates.crt",
+        headers={},
+    )
+
+
+@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+def test_fetch_detail_passes_policy_user_agent(mock_markdown):
+    fetch_detail_item(
+        {
+            "source_type": "rss",
+            "candidate_decision": "fetch",
+            "effective_policy": {"user_agent": "CustomAgent/1.0"},
+            "candidate": {
+                "id": "a1",
+                "title": "Article",
+                "link": "https://example.com/article",
+            },
+        }
+    )
+
+    mock_markdown.assert_called_once_with(
+        "https://example.com/article",
+        verify=True,
+        headers={"User-Agent": "CustomAgent/1.0"},
     )
 
 

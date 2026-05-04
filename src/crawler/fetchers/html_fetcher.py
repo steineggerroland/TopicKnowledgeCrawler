@@ -12,6 +12,15 @@ from crawler.utils.logger import getLogger
 # Initialize logger
 logger = getLogger(__name__)
 
+DEFAULT_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (compatible; TopicKnowledgeCrawler/0.1; "
+        "+https://github.com/steineggerroland/TopicKnowledgeCrawler)"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en,de;q=0.8",
+}
+
 
 class HtmlFetcher:
     def __init__(self, source_config):
@@ -124,12 +133,12 @@ class HtmlFetcher:
             return None
 
     @staticmethod
-    def generate_markdown_from_url(url, *, verify=True):
+    def generate_markdown_from_url(url, *, verify=True, headers=None):
         """
         Fetches a webpage and converts its content into Markdown using trafilatura.
         """
         try:
-            html_content = HtmlFetcher._fetch_html(url, verify=verify)
+            html_content = HtmlFetcher._fetch_html(url, verify=verify, headers=headers)
             markdown = text_processor.convert_from_html_to_markdown(html_content)
             if markdown:
                 return markdown
@@ -141,11 +150,12 @@ class HtmlFetcher:
             raise e
 
     @staticmethod
-    def _fetch_html(url, *, verify=True):
+    def _fetch_html(url, *, verify=True, headers=None):
         """
         Fetch the HTML content of a given URL.
         """
-        response = requests.get(url, timeout=10, verify=verify)
+        request_headers = {**DEFAULT_HEADERS, **(headers or {})}
+        response = requests.get(url, timeout=10, verify=verify, headers=request_headers)
         response.raise_for_status()
         return response.text
 

@@ -88,6 +88,14 @@ return out
 
 Dieser Step liest RSS/Podcast-RSS oder HTML-Listing-Seiten und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden. Bei HTML werden nur `article_selector` und `main_page_anchor_selector` aus `configuration_json` angewendet; tiefere Klick-/Follow-Logik gehoert spaeter in Detailfetch/Resolver-Steps.
 
+Fuer Seiten, die nackte Python-Requests blockieren, kann pro Quelle in `policy_json` ein User-Agent gesetzt werden:
+
+```json
+{
+  "user_agent": "Mozilla/5.0 (compatible; TopicKnowledgeCrawler/0.1; +https://github.com/steineggerroland/TopicKnowledgeCrawler)"
+}
+```
+
 n8n-Code-Node-Beispiel fuer `Filter Candidates V2` nach History-Lookup/Merge:
 
 ```python

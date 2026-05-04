@@ -65,6 +65,19 @@ def _policy_value(row: Mapping[str, Any], name: str, default: Any = None) -> Any
     return default
 
 
+def _request_headers(row: Mapping[str, Any]) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    policy = row.get("effective_policy")
+    if isinstance(policy, Mapping):
+        policy_headers = policy.get("request_headers")
+        if isinstance(policy_headers, Mapping):
+            headers.update({str(k): str(v) for k, v in policy_headers.items()})
+        user_agent = policy.get("user_agent")
+        if user_agent:
+            headers["User-Agent"] = str(user_agent)
+    return headers
+
+
 def _max_candidates(row: Mapping[str, Any]) -> int | None:
     max_entries = _policy_value(row, "max_candidates_per_run")
     if max_entries is None:
@@ -215,7 +228,7 @@ def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             "HTML configuration needs article_selector and main_page_anchor_selector",
         )
 
-    html = HtmlFetcher._fetch_html(url)
+    html = HtmlFetcher._fetch_html(url, headers=_request_headers(row))
     soup = BeautifulSoup(html, "html.parser")
     blocks = soup.select(article_selector)
     max_entries = _max_candidates(row)
