@@ -291,6 +291,91 @@ def test_list_candidates_step_returns_envelope(mock_parse):
     assert result["items"][0]["candidate"]["title"] == "Article 1"
 
 
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value="""
+    <html><body>
+      <article><a href="/a1"><h2>Article 1</h2></a></article>
+      <article><a href="/a2"><h2>Article 2</h2></a></article>
+    </body></html>
+    """,
+)
+def test_list_candidates_html_from_listing(mock_fetch):
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "name": "Example HTML",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration": {
+                "article_selector": "article",
+                "main_page_anchor_selector": "a",
+            },
+        }
+    )
+
+    assert len(out) == 2
+    assert out[0]["source_type"] == "html"
+    assert out[0]["candidate"]["link"] == "https://example.com/a1"
+    assert out[0]["candidate"]["title"] == "Article 1"
+    assert out[0]["candidate"]["item_kind"] == "article"
+
+
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value="""
+    <html><body>
+      <article><a href="/a1?utm_source=x"><h2>Article 1</h2></a></article>
+      <article><a href="/a1"><h2>Article duplicate</h2></a></article>
+    </body></html>
+    """,
+)
+def test_list_candidates_html_deduplicates_links(mock_fetch):
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration_json": json.dumps(
+                {
+                    "article_selector": "article",
+                    "main_page_anchor_selector": "a",
+                }
+            ),
+        }
+    )
+
+    assert len(out) == 1
+    assert out[0]["candidate"]["link"] == "https://example.com/a1"
+
+
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value="""
+    <html><body>
+      <article><a href="/a1"><h2>Article 1</h2></a></article>
+      <article><a href="/a2"><h2>Article 2</h2></a></article>
+    </body></html>
+    """,
+)
+def test_list_candidates_html_respects_max_candidates(mock_fetch):
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration": {
+                "article_selector": "article",
+                "main_page_anchor_selector": "a",
+            },
+            "effective_policy": {"max_candidates_per_run": 1},
+        }
+    )
+
+    assert len(out) == 1
+    assert out[0]["candidate"]["title"] == "Article 1"
+
+
 def test_filter_candidate_fetches_unknown_candidate():
     out = filter_candidate_item(
         {

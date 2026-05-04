@@ -86,7 +86,7 @@ for item in _items:
 return out
 ```
 
-Dieser Step liest RSS/Podcast-RSS und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden.
+Dieser Step liest RSS/Podcast-RSS oder HTML-Listing-Seiten und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden. Bei HTML werden nur `article_selector` und `main_page_anchor_selector` aus `configuration_json` angewendet; tiefere Klick-/Follow-Logik gehoert spaeter in Detailfetch/Resolver-Steps.
 
 n8n-Code-Node-Beispiel fuer `Filter Candidates V2` nach History-Lookup/Merge:
 

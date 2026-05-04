@@ -227,7 +227,7 @@ Ziel: teure Detailabrufe erst nach History-/Policy-Entscheidung ausfuehren.
 Umsetzung:
 
 - `list_candidates` fuer RSS und Podcast-RSS implementieren.
-- HTML-Kandidaten aus Listing-Links implementieren.
+- HTML-Kandidaten aus Listing-Links implementieren; keine teure Klick-/Follow-Logik vor dem Filter.
 - `filter_candidates` implementieren.
 - n8n-Crawl-Workflow umbauen:
   - `Python: Fetch + Expand` ersetzen durch `List Candidates`,
