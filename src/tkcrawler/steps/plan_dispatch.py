@@ -94,19 +94,21 @@ def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None
         should, reason = False, "html_configuration_invalid"
     else:
         retry_until = _retry_after_until(row, now)
-        if retry_until and retry_until > now:
-            should, reason = False, "retry_after_active"
-        elif str(row.get("last_crawl_status") or "").strip() == "running":
-            started = _parse_dt(row.get("last_crawl_started_at"))
-            stale_after = timedelta(minutes=float(policy.get("stale_running_minutes", 120)))
-            if started and started + stale_after <= now:
-                should, reason = True, "due"
-            else:
-                should, reason = False, "already_running"
-        elif not force:
-            next_allowed = _parse_dt(row.get("next_allowed_crawl_at"))
+        next_allowed = _parse_dt(row.get("next_allowed_crawl_at"))
+        if not force:
             if next_allowed and next_allowed > now:
                 should, reason = False, "not_due"
+            elif retry_until and retry_until > now:
+                should, reason = False, "retry_after_active"
+            elif str(row.get("last_crawl_status") or "").strip() == "running":
+                started = _parse_dt(row.get("last_crawl_started_at"))
+                stale_after = timedelta(minutes=float(policy.get("stale_running_minutes", 120)))
+                if started and started + stale_after <= now:
+                    should, reason = True, "due"
+                else:
+                    should, reason = False, "already_running"
+        elif retry_until and retry_until > now:
+            should, reason = False, "retry_after_active"
 
     interval = float(policy.get("crawl_interval_minutes", DEFAULT_POLICY["crawl_interval_minutes"]))
     current_next_allowed = _parse_dt(row.get("next_allowed_crawl_at"))

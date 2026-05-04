@@ -111,6 +111,24 @@ def test_plan_dispatch_skips_not_due_source():
     assert out["dispatch_reason"] == "not_due"
 
 
+def test_plan_dispatch_next_allowed_wins_over_stale_running_status():
+    out = plan_dispatch_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "type": "rss",
+            "source_status": "ready",
+            "next_allowed_crawl_at": "2026-05-04T11:01:56.864904+00:00",
+            "last_crawl_status": "running",
+            "last_crawl_started_at": "2026-05-04T06:01:56.876Z",
+        },
+        {"now": "2026-05-04T08:06:17.193839+00:00"},
+    )
+
+    assert out["should_dispatch"] is False
+    assert out["dispatch_reason"] == "not_due"
+    assert out["next_allowed_crawl_at"] == "2026-05-04T11:01:56.864904+00:00"
+
+
 def test_plan_dispatch_skips_invalid_html_configuration():
     out = plan_dispatch_item(
         {

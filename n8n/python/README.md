@@ -52,13 +52,16 @@ return out
 n8n-Code-Node-Beispiel fuer den Dispatch-Workflow:
 
 ```python
+from datetime import datetime, timezone
+
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item
 
+now = datetime.now(timezone.utc).isoformat()
 out = []
 for item in _items:
     planned = plan_dispatch_item(
         item["json"],
-        {"now": _now.isoformat(), "dispatch_mode": "scheduled"},
+        {"now": now, "dispatch_mode": "scheduled"},
     )
     if planned["should_dispatch"]:
         out.append({"json": planned})
