@@ -2,8 +2,10 @@ import json
 import os
 import subprocess
 import sys
+from unittest.mock import Mock, patch
 
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
+from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
 
@@ -185,6 +187,104 @@ def test_plan_dispatch_step_returns_envelope():
 
     assert result["ok"] is True
     assert result["items"][0]["should_dispatch"] is True
+
+
+@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+def test_list_candidates_rss_without_detail_fetch(mock_parse):
+    mock_parse.return_value.entries = [
+        Mock(
+            title="Article 1",
+            link="https://example.com/1?utm_source=x",
+            summary="Summary 1",
+            author="Author",
+            published="2026-05-04T09:00:00Z",
+            updated="2026-05-04T10:00:00Z",
+        ),
+        Mock(title="Article duplicate", link="https://example.com/1", summary="Duplicate"),
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/feed",
+            "name": "Example",
+            "type": "rss",
+            "url": "https://example.com/feed",
+        }
+    )
+
+    assert len(out) == 1
+    assert out[0]["source_type"] == "rss"
+    assert out[0]["article_id"]
+    assert out[0]["candidate"]["link"] == "https://example.com/1"
+    assert out[0]["candidate"]["item_kind"] == "article"
+    assert out[0]["candidate"]["has_feed_content"] is False
+
+
+@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+def test_list_candidates_respects_max_entries(mock_parse):
+    mock_parse.return_value.entries = [
+        Mock(title="Article 1", link="https://example.com/1", summary="Summary 1"),
+        Mock(title="Article 2", link="https://example.com/2", summary="Summary 2"),
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/feed",
+            "type": "rss",
+            "url": "https://example.com/feed",
+            "effective_policy": {"max_entries_per_run": 1},
+        }
+    )
+
+    assert len(out) == 1
+    assert out[0]["candidate"]["title"] == "Article 1"
+
+
+@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+def test_list_candidates_podcast_uses_feed_description(mock_parse):
+    mock_parse.return_value.entries = [
+        {
+            "title": "Episode 1",
+            "link": "https://example.com/e1",
+            "description": "<p>Shownotes</p>",
+            "published": "2026-05-04T09:00:00Z",
+            "tags": [{"term": "architecture"}],
+        }
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/podcast",
+            "type": "rss+podcast",
+            "url": "https://example.com/podcast",
+        }
+    )
+
+    assert len(out) == 1
+    assert out[0]["candidate"]["item_kind"] == "episode"
+    assert out[0]["candidate"]["has_feed_content"] is True
+    assert out[0]["candidate"]["feed_content"] == "<p>Shownotes</p>"
+    assert out[0]["candidate"]["categories"] == ["architecture"]
+
+
+@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+def test_list_candidates_step_returns_envelope(mock_parse):
+    mock_parse.return_value.entries = [
+        Mock(title="Article 1", link="https://example.com/1", summary="Summary 1"),
+    ]
+
+    result = list_candidates_step(
+        {
+            "item": {
+                "crawl_key": "https://example.com/feed",
+                "type": "rss",
+                "url": "https://example.com/feed",
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["candidate"]["title"] == "Article 1"
 
 
 def test_cli_run_step_smoke():

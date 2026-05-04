@@ -61,6 +61,13 @@ Zusaetzlich in n8n oder Python pruefen:
 
 Bei `manual` oder `force` kann `Python: Plan Dispatch` die Intervallpruefung ueberschreiben, sollte aber harte Limits wie `Retry-After` weiterhin respektieren, sofern nicht explizit anders gewuenscht.
 
+Wichtig fuer die Verdrahtung: Der Child-Crawl-Workflow sollte das geplante Item aus `Python: Plan Dispatch` bzw. dem True-Branch des IF bekommen, nicht den Output des Data-Table-Update-Nodes. Der Update-Node kann Felder verlieren oder anders formatieren. Wenn `Execute Workflow` hinter dem Update-Node haengt, fehlen im Child leicht Felder wie `dispatch_reason` oder `effective_policy`. Besser:
+
+- IF True -> `Data Table: Mark Crawl Started`
+- IF True -> `Execute Workflow`
+
+oder alternativ nach dem Update die geplanten Felder wieder per Merge/Set aus dem IF-Input herstellen.
+
 ## `Python: Plan Dispatch`
 
 Input: Source-Zeile aus `crawl_sources`.

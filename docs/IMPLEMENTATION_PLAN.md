@@ -58,6 +58,7 @@ Kurzfristig koennen die CLI-Module entweder einzeln per `python -m tkcrawler.ste
 
 ```bash
 python -m tkcrawler.cli.run_step normalize_source < input.json
+python -m tkcrawler.cli.run_step list_candidates < input.json
 ```
 
 ## n8n-Input vs. CLI-Envelope
@@ -81,10 +82,11 @@ for item in _items:
         item["json"],
         {"now": now, "dispatch_mode": "scheduled"},
     )
-    if planned["should_dispatch"]:
-        out.append({"json": planned})
+    out.append({"json": planned})
 return out
 ```
+
+Das Filtern passiert danach im n8n-IF. So bleiben auch `not_due`-/Fehlergruende sichtbar.
 
 In n8n ist der Input also **nicht**:
 

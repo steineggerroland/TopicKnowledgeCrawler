@@ -33,6 +33,7 @@ Neue portable Steps liegen unter `tkcrawler.steps` und koennen sowohl in n8n als
 ```bash
 python -m tkcrawler.cli.run_step normalize_source < input.json
 python -m tkcrawler.cli.run_step plan_dispatch < input.json
+python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
@@ -63,10 +64,25 @@ for item in _items:
         item["json"],
         {"now": now, "dispatch_mode": "scheduled"},
     )
-    if planned["should_dispatch"]:
-        out.append({"json": planned})
+    out.append({"json": planned})
 return out
 ```
+
+Danach in n8n per IF auf `{{ $json.should_dispatch }}` verzweigen. Wenn der Python-Node bereits filtert, gibt er bei lauter `not_due`-Quellen `[]` zurueck und der Workflow endet ohne False-Branch.
+
+n8n-Code-Node-Beispiel fuer `List Candidates V2` im Child-Crawl-Workflow:
+
+```python
+from tkcrawler.steps.list_candidates import list_candidates_items
+
+out = []
+for item in _items:
+    for candidate in list_candidates_items(item["json"]):
+        out.append({"json": candidate})
+return out
+```
+
+Dieser Step liest RSS/Podcast-RSS und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden.
 
 n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
 
