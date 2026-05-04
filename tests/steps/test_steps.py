@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
+from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
@@ -355,6 +356,85 @@ def test_filter_candidate_step_returns_envelope():
 
     assert result["ok"] is True
     assert result["items"][0]["candidate_decision"] == "fetch"
+
+
+@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+def test_fetch_detail_rss_loads_detail_page(mock_markdown):
+    out = fetch_detail_item(
+        {
+            "source_type": "rss",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "a1",
+                "title": "Article",
+                "link": "https://example.com/article",
+                "summary": "Summary",
+                "author": "Author",
+                "publishedAt": "2026-05-04T09:00:00Z",
+                "updatedAt": None,
+                "item_kind": "article",
+            },
+        }
+    )
+
+    mock_markdown.assert_called_once_with("https://example.com/article")
+    assert out["article_id"] == "a1"
+    assert out["article"]["content_md"] == "# Article\n\nBody"
+    assert out["content_md"] == "# Article\n\nBody"
+
+
+@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Shownotes")
+def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "<p>Summary</p>",
+                "publishedAt": "2026-05-04T09:00:00Z",
+                "has_feed_content": True,
+                "feed_content": "<p>Shownotes</p>",
+                "item_kind": "episode",
+                "categories": ["architecture"],
+            },
+        }
+    )
+
+    assert out["article"]["content_md"] == "# Episode\n\nShownotes"
+    assert out["article"]["categories"] == ["architecture"]
+
+
+def test_fetch_detail_rejects_skipped_candidate():
+    try:
+        fetch_detail_item(
+            {
+                "candidate_decision": "skip_too_old",
+                "candidate": {"id": "a1", "link": "https://example.com/article"},
+            }
+        )
+    except Exception as exc:
+        assert "Candidate decision is not fetch" in str(exc)
+    else:
+        raise AssertionError("Expected exception")
+
+
+@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article")
+def test_fetch_detail_step_returns_envelope(mock_markdown):
+    result = fetch_detail_step(
+        {
+            "item": {
+                "source_type": "rss",
+                "candidate_decision": "fetch",
+                "candidate": {"id": "a1", "title": "Article", "link": "https://example.com/article"},
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["article"]["id"] == "a1"
 
 
 def test_cli_run_step_smoke():

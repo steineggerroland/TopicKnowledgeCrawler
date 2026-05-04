@@ -35,6 +35,7 @@ python -m tkcrawler.cli.run_step normalize_source < input.json
 python -m tkcrawler.cli.run_step plan_dispatch < input.json
 python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step filter_candidates < input.json
+python -m tkcrawler.cli.run_step fetch_detail < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
@@ -101,6 +102,19 @@ return out
 ```
 
 Danach per IF auf `{{ $json.candidate_decision === "fetch" }}` verzweigen. `skip_too_old` bleibt sichtbar im False-Branch und verursacht keinen Detailabruf.
+
+n8n-Code-Node-Beispiel fuer `Fetch Detail V2` nach `candidate_decision == fetch`:
+
+```python
+from tkcrawler.steps.fetch_detail import fetch_detail_item
+
+out = []
+for item in _items:
+    out.append({"json": fetch_detail_item(item["json"])})
+return out
+```
+
+Dieser Step laedt fuer RSS-Artikel die Detailseite und erzeugt `article.content_md`. Bei Podcast-RSS bevorzugt er vorhandene Feed-/Shownotes-Inhalte.
 
 n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
 
