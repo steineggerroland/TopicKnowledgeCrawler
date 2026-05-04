@@ -4,6 +4,7 @@ from typing import Any, Mapping
 
 from crawler.fetchers.html_fetcher import HtmlFetcher
 from crawler.utils import text_processor
+from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
 
@@ -42,17 +43,7 @@ def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None 
     source_type = str(row.get("source_type") or row.get("type") or "").strip()
     item_kind = str(candidate.get("item_kind") or "article")
     verify = context.get("verify", row.get("verify", True))
-    headers = context.get("headers")
-    if not isinstance(headers, Mapping):
-        headers = {}
-    policy = row.get("effective_policy")
-    if isinstance(policy, Mapping):
-        policy_headers = policy.get("request_headers")
-        if isinstance(policy_headers, Mapping):
-            headers = {**{str(k): str(v) for k, v in policy_headers.items()}, **dict(headers)}
-        user_agent = policy.get("user_agent")
-        if user_agent and "User-Agent" not in headers:
-            headers = {**dict(headers), "User-Agent": str(user_agent)}
+    headers = request_headers(row, context)
 
     if source_type == "rss+podcast" and candidate.get("has_feed_content"):
         content_md = _markdown_from_feed_content(candidate)

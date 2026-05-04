@@ -28,6 +28,31 @@ Die bisherige Datei `summary_history.json` hielt pro Artikel den letzten `conten
 | `last_crawl_error` | String, optional | Letzter Crawl-Fehler |
 | `last_dispatch_reason` | String, optional | Warum der Dispatcher die Quelle gestartet oder uebersprungen hat |
 
+### `policy_json`
+
+Manuelle Quellen-Policy als JSON-String. Der Dispatcher schreibt daraus `effective_policy`, die Crawl-Schritte nutzen diese Werte anschliessend weiter.
+
+Beispiel fuer HTML-Quellen wie Medium-Tag-Archive:
+
+```json
+{
+  "crawl_interval_minutes": 180,
+  "refresh_window_days": 7,
+  "max_candidates_per_run": 20,
+  "max_llm_items_per_run": 5,
+  "user_agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  "contact": "mailto:hello@example.com",
+  "crawler_name": "infl0"
+}
+```
+
+Header-Semantik:
+
+- `user_agent`: expliziter `User-Agent`. Fuer manche HTML-Quellen ist ein browsernaher User-Agent noetig, weil reine Bot-User-Agents blockiert werden.
+- `request_headers`: optionales Objekt fuer weitere Header-Overrides.
+- `contact`: wird als `From` und `X-Infl0-Contact` gesendet.
+- `crawler_name`: wird als `X-Infl0-Crawler` gesendet.
+
 **Workflow:** Schedule / Webhook → **Get rows** (`active = true`) → ein Item pro Zeile → Python „Fetch & expand“.
 
 Der **`crawl_key`** muss exakt zu `user_feeds.crawl_key` in infl0 passieren (Nutzer trägt dieselbe Feed-URL ein).

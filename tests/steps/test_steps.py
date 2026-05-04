@@ -400,6 +400,64 @@ def test_list_candidates_html_passes_policy_user_agent(mock_fetch):
     )
 
 
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value=(
+        "<html><body><div><a href='/a1'><h2>Article 1</h2></a></div>"
+        "<div><a href='/a2'><h2>Article 2</h2></a></div></body></html>"
+    ),
+)
+def test_list_candidates_html_accepts_anchor_as_article_block(mock_fetch):
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration": {
+                "article_selector": "div > a:has(h2)",
+                "main_page_anchor_selector": "div > a:has(h2)",
+            },
+        }
+    )
+
+    assert [item["candidate"]["title"] for item in out] == ["Article 1", "Article 2"]
+    assert [item["candidate"]["link"] for item in out] == [
+        "https://example.com/a1",
+        "https://example.com/a2",
+    ]
+
+
+@patch(
+    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    return_value="<html><body><article><a href='/a1'><h2>Article 1</h2></a></article></body></html>",
+)
+def test_list_candidates_html_passes_fair_contact_headers(mock_fetch):
+    list_candidates_items(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration": {
+                "article_selector": "article",
+                "main_page_anchor_selector": "a",
+            },
+            "effective_policy": {
+                "contact": "mailto:crawler@example.com",
+                "crawler_name": "infl0",
+            },
+        }
+    )
+
+    mock_fetch.assert_called_once_with(
+        "https://example.com/articles",
+        headers={
+            "From": "mailto:crawler@example.com",
+            "X-Infl0-Contact": "mailto:crawler@example.com",
+            "X-Infl0-Crawler": "infl0",
+        },
+    )
+
+
 def test_filter_candidate_fetches_unknown_candidate():
     out = filter_candidate_item(
         {

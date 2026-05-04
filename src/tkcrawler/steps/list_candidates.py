@@ -9,6 +9,7 @@ import feedparser
 from bs4 import BeautifulSoup
 
 from crawler.fetchers.html_fetcher import HtmlFetcher
+from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
 
@@ -63,19 +64,6 @@ def _policy_value(row: Mapping[str, Any], name: str, default: Any = None) -> Any
     if isinstance(policy, Mapping) and name in policy:
         return policy[name]
     return default
-
-
-def _request_headers(row: Mapping[str, Any]) -> dict[str, str]:
-    headers: dict[str, str] = {}
-    policy = row.get("effective_policy")
-    if isinstance(policy, Mapping):
-        policy_headers = policy.get("request_headers")
-        if isinstance(policy_headers, Mapping):
-            headers.update({str(k): str(v) for k, v in policy_headers.items()})
-        user_agent = policy.get("user_agent")
-        if user_agent:
-            headers["User-Agent"] = str(user_agent)
-    return headers
 
 
 def _max_candidates(row: Mapping[str, Any]) -> int | None:
@@ -217,6 +205,20 @@ def _html_title(block: Any, anchor: Any) -> str | None:
     return None
 
 
+def _html_anchor(block: Any, anchor_selector: str) -> Any:
+    if block.name == "a" and block.get("href"):
+        if not anchor_selector or block.select(anchor_selector) or _matches_selector(block, anchor_selector):
+            return block
+    return block.select_one(anchor_selector)
+
+
+def _matches_selector(element: Any, selector: str) -> bool:
+    try:
+        return bool(element.parent and element in element.parent.select(selector))
+    except Exception:
+        return False
+
+
 def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
     source_type, url, crawl_key, source_name = _source_basics(row)
     cfg = _configuration(row)
@@ -228,7 +230,7 @@ def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             "HTML configuration needs article_selector and main_page_anchor_selector",
         )
 
-    html = HtmlFetcher._fetch_html(url, headers=_request_headers(row))
+    html = HtmlFetcher._fetch_html(url, headers=request_headers(row))
     soup = BeautifulSoup(html, "html.parser")
     blocks = soup.select(article_selector)
     max_entries = _max_candidates(row)
@@ -238,7 +240,7 @@ def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
     seen_links: set[str] = set()
     out: list[dict[str, Any]] = []
     for block in blocks:
-        anchor = block.select_one(anchor_selector)
+        anchor = _html_anchor(block, anchor_selector)
         if not anchor or not anchor.get("href"):
             continue
         link = HtmlFetcher.sanitize_link(urljoin(url, anchor.get("href")))
