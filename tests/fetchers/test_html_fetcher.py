@@ -12,7 +12,7 @@ def source_html():
     }
 
 
-def mock_fetch_html(url):
+def mock_fetch_html(url, **kwargs):
     """
     Mock function to simulate fetching HTML content.
     """

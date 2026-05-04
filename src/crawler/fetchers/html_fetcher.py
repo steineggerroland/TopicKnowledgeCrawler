@@ -124,12 +124,12 @@ class HtmlFetcher:
             return None
 
     @staticmethod
-    def generate_markdown_from_url(url):
+    def generate_markdown_from_url(url, *, verify=True):
         """
         Fetches a webpage and converts its content into Markdown using trafilatura.
         """
         try:
-            html_content = HtmlFetcher._fetch_html(url)
+            html_content = HtmlFetcher._fetch_html(url, verify=verify)
             markdown = text_processor.convert_from_html_to_markdown(html_content)
             if markdown:
                 return markdown
@@ -141,11 +141,11 @@ class HtmlFetcher:
             raise e
 
     @staticmethod
-    def _fetch_html(url):
+    def _fetch_html(url, *, verify=True):
         """
         Fetch the HTML content of a given URL.
         """
-        response = requests.get(url, timeout=10)
+        response = requests.get(url, timeout=10, verify=verify)
         response.raise_for_status()
         return response.text
 

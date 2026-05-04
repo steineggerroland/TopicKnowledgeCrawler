@@ -108,9 +108,16 @@ n8n-Code-Node-Beispiel fuer `Fetch Detail V2` nach `candidate_decision == fetch`
 ```python
 from tkcrawler.steps.fetch_detail import fetch_detail_item
 
+verify = "/etc/ssl/certs/ca-certificates.crt"
 out = []
 for item in _items:
-    out.append({"json": fetch_detail_item(item["json"])})
+    try:
+        out.append({"json": fetch_detail_item(item["json"], {"verify": verify})})
+    except Exception as exc:
+        j = dict(item["json"])
+        j["fetch_detail_error"] = str(exc)
+        j["candidate_decision"] = "fetch_failed"
+        out.append({"json": j})
 return out
 ```
 

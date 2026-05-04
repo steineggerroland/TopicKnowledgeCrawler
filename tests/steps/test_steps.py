@@ -377,10 +377,31 @@ def test_fetch_detail_rss_loads_detail_page(mock_markdown):
         }
     )
 
-    mock_markdown.assert_called_once_with("https://example.com/article")
+    mock_markdown.assert_called_once_with("https://example.com/article", verify=True)
     assert out["article_id"] == "a1"
     assert out["article"]["content_md"] == "# Article\n\nBody"
     assert out["content_md"] == "# Article\n\nBody"
+
+
+@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+def test_fetch_detail_passes_verify_context(mock_markdown):
+    fetch_detail_item(
+        {
+            "source_type": "rss",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "a1",
+                "title": "Article",
+                "link": "https://example.com/article",
+            },
+        },
+        {"verify": "/etc/ssl/certs/ca-certificates.crt"},
+    )
+
+    mock_markdown.assert_called_once_with(
+        "https://example.com/article",
+        verify="/etc/ssl/certs/ca-certificates.crt",
+    )
 
 
 @patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Shownotes")

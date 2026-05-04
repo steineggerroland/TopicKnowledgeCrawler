@@ -21,7 +21,8 @@ def _markdown_from_feed_content(candidate: Mapping[str, Any]) -> str:
     return markdown
 
 
-def fetch_detail_item(row: Mapping[str, Any]) -> dict[str, Any]:
+def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
+    context = context or {}
     candidate = row.get("candidate")
     if not isinstance(candidate, Mapping):
         raise StepError("missing_candidate", "Item needs candidate object")
@@ -40,13 +41,14 @@ def fetch_detail_item(row: Mapping[str, Any]) -> dict[str, Any]:
 
     source_type = str(row.get("source_type") or row.get("type") or "").strip()
     item_kind = str(candidate.get("item_kind") or "article")
+    verify = context.get("verify", row.get("verify", True))
 
     if source_type == "rss+podcast" and candidate.get("has_feed_content"):
         content_md = _markdown_from_feed_content(candidate)
     elif candidate.get("has_feed_content") and row.get("prefer_feed_content"):
         content_md = _markdown_from_feed_content(candidate)
     else:
-        content_md = HtmlFetcher.generate_markdown_from_url(link)
+        content_md = HtmlFetcher.generate_markdown_from_url(link, verify=verify)
 
     article = {
         "id": candidate.get("id") or row.get("article_id") or row.get("item_id"),
@@ -73,5 +75,5 @@ def fetch_detail_item(row: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def fetch_detail_step(payload: Mapping[str, Any]) -> dict[str, Any]:
-    item, _context = split_input(payload)
-    return ok(fetch_detail_item(item))
+    item, context = split_input(payload)
+    return ok(fetch_detail_item(item, context))
