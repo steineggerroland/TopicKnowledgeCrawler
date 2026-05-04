@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
+from tkcrawler.steps.finalize_item import finalize_item, finalize_item_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
@@ -456,6 +457,54 @@ def test_fetch_detail_step_returns_envelope(mock_markdown):
 
     assert result["ok"] is True
     assert result["items"][0]["article"]["id"] == "a1"
+
+
+@patch("tkcrawler.infl0_payload.tldextract.extract")
+def test_finalize_item_sets_metadata(mock_extract):
+    mock_extract.return_value.registered_domain = "example.com"
+
+    out = finalize_item(
+        {
+            "source_type": "rss",
+            "url": "https://feeds.example.com/atom",
+            "article": {
+                "id": "a1",
+                "title": "Article",
+                "link": "https://example.com/article",
+                "content_md": "Body",
+            },
+        }
+    )
+
+    assert out["article_id"] == "a1"
+    assert out["item_id"] == "a1"
+    assert out["content_hash"]
+    assert out["article"]["content_hash"] == out["content_hash"]
+    assert out["article"]["source_type"] == "rss"
+    assert out["article"]["tld"] == "example.com"
+
+
+@patch("tkcrawler.infl0_payload.tldextract.extract")
+def test_finalize_item_step_returns_envelope(mock_extract):
+    mock_extract.return_value.registered_domain = "example.com"
+
+    result = finalize_item_step(
+        {
+            "item": {
+                "source_type": "rss",
+                "url": "https://feeds.example.com/atom",
+                "article": {
+                    "id": "a1",
+                    "title": "Article",
+                    "link": "https://example.com/article",
+                    "content_md": "Body",
+                },
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["content_hash"]
 
 
 def test_cli_run_step_smoke():

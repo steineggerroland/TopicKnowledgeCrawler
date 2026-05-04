@@ -61,6 +61,7 @@ python -m tkcrawler.cli.run_step normalize_source < input.json
 python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step filter_candidates < input.json
 python -m tkcrawler.cli.run_step fetch_detail < input.json
+python -m tkcrawler.cli.run_step finalize_item < input.json
 ```
 
 ## n8n-Input vs. CLI-Envelope

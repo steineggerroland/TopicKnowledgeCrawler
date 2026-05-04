@@ -36,6 +36,7 @@ python -m tkcrawler.cli.run_step plan_dispatch < input.json
 python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step filter_candidates < input.json
 python -m tkcrawler.cli.run_step fetch_detail < input.json
+python -m tkcrawler.cli.run_step finalize_item < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
@@ -122,6 +123,19 @@ return out
 ```
 
 Dieser Step laedt fuer RSS-Artikel die Detailseite und erzeugt `article.content_md`. Bei Podcast-RSS bevorzugt er vorhandene Feed-/Shownotes-Inhalte.
+
+n8n-Code-Node-Beispiel fuer `Finalize Item V2` nach erfolgreichem Detailfetch:
+
+```python
+from tkcrawler.steps.finalize_item import finalize_item
+
+out = []
+for item in _items:
+    out.append({"json": finalize_item(item["json"])})
+return out
+```
+
+Dieser Step ergaenzt `content_hash`, `source_type` und `tld` am `article` und setzt `content_hash` auch flach auf dem n8n-Item. Danach kann der bestehende History-/LLM-Pfad genutzt werden.
 
 n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
 
