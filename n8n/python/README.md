@@ -34,6 +34,7 @@ Neue portable Steps liegen unter `tkcrawler.steps` und koennen sowohl in n8n als
 python -m tkcrawler.cli.run_step normalize_source < input.json
 python -m tkcrawler.cli.run_step plan_dispatch < input.json
 python -m tkcrawler.cli.run_step list_candidates < input.json
+python -m tkcrawler.cli.run_step filter_candidates < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
@@ -83,6 +84,23 @@ return out
 ```
 
 Dieser Step liest RSS/Podcast-RSS und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden.
+
+n8n-Code-Node-Beispiel fuer `Filter Candidates V2` nach History-Lookup/Merge:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.filter_candidates import filter_candidate_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    filtered = filter_candidate_item(item["json"], {"now": now})
+    out.append({"json": filtered})
+return out
+```
+
+Danach per IF auf `{{ $json.candidate_decision === "fetch" }}` verzweigen. `skip_too_old` bleibt sichtbar im False-Branch und verursacht keinen Detailabruf.
 
 n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
 

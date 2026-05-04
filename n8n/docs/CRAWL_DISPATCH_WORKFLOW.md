@@ -122,15 +122,15 @@ Prioritaet:
 
 ## Auswirkungen auf den Crawl-Workflow
 
-Der Crawl-Workflow sollte weiterhin robust sein, falls er direkt gestartet wird. Er darf also nicht allein dem Dispatcher vertrauen.
+Der Crawl-Workflow bekommt im Normalfall bereits ein von `Python: Plan Dispatch` geplantes Item. Wenn er vom Dispatcher gestartet wird, sollte er nicht direkt erneut `plan_dispatch` ausfuehren, nachdem `next_allowed_crawl_at` und `last_crawl_status` bereits geschrieben wurden. Sonst kann der Child-Workflow entweder faelschlich `not_due` werden oder, bei erzwungenem Re-Check, `dispatch_reason = manual_force` erzeugen.
 
 Empfohlen:
 
-- Dispatcher filtert grob und markiert Runs.
-- Crawl-Workflow fuehrt am Anfang nochmals `plan_crawl` aus.
-- Wenn `should_crawl = false`, beendet der Crawl-Workflow schnell und schreibt Status/Grund zurueck.
+- Dispatcher filtert und markiert Runs.
+- Child-Crawl-Workflow startet direkt mit `List Candidates`, wenn `should_dispatch = true` bereits vorhanden ist.
+- Fuer direkte manuelle Child-Starts sollte ein separater kleiner Guard genutzt werden, der nur Pflichtfelder validiert (`crawl_key`, `url`, `type`), aber nicht erneut `next_allowed_crawl_at` berechnet.
 
-Diese doppelte Pruefung verhindert Fehlstarts durch manuelle Ausfuehrung oder veraltete Queue-Items.
+Diese Trennung verhindert, dass der Dispatcher-Entscheid im Child versehentlich ueberschrieben wird.
 
 ## Tabellenerweiterungen
 

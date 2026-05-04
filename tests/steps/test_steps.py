@@ -5,6 +5,7 @@ import sys
 from unittest.mock import Mock, patch
 
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
+from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
@@ -285,6 +286,75 @@ def test_list_candidates_step_returns_envelope(mock_parse):
 
     assert result["ok"] is True
     assert result["items"][0]["candidate"]["title"] == "Article 1"
+
+
+def test_filter_candidate_fetches_unknown_candidate():
+    out = filter_candidate_item(
+        {
+            "article_id": "a1",
+            "candidate": {
+                "id": "a1",
+                "publishedAt": "Thu, 22 May 2025 12:50:50 GMT",
+            },
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["candidate_decision"] == "fetch"
+    assert out["candidate_reason"] == "new_candidate"
+    assert out["candidate_history_exists"] is False
+    assert out["candidate_published_at"] == "2025-05-22T12:50:50+00:00"
+
+
+def test_filter_candidate_skips_known_old_candidate():
+    out = filter_candidate_item(
+        {
+            "article_id": "a1",
+            "candidate": {
+                "id": "a1",
+                "publishedAt": "2026-04-20T12:00:00+00:00",
+            },
+            "history": {"exists": True},
+            "effective_policy": {"refresh_window_days": 7},
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["candidate_decision"] == "skip_too_old"
+    assert out["candidate_reason"] == "known_candidate_outside_refresh_window"
+
+
+def test_filter_candidate_fetches_known_recent_candidate():
+    out = filter_candidate_item(
+        {
+            "article_id": "a1",
+            "candidate": {
+                "id": "a1",
+                "publishedAt": "2026-05-02T12:00:00+00:00",
+            },
+            "history": {"exists": True},
+            "effective_policy": {"refresh_window_days": 7},
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["candidate_decision"] == "fetch"
+    assert out["candidate_reason"] == "known_candidate_within_refresh_window"
+
+
+def test_filter_candidate_step_returns_envelope():
+    result = filter_candidates_step(
+        {
+            "item": {
+                "article_id": "a1",
+                "candidate": {"id": "a1", "publishedAt": "2026-05-02T12:00:00+00:00"},
+            },
+            "context": {"now": "2026-05-04T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["candidate_decision"] == "fetch"
 
 
 def test_cli_run_step_smoke():
