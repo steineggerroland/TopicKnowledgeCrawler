@@ -37,6 +37,7 @@ python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step filter_candidates < input.json
 python -m tkcrawler.cli.run_step fetch_detail < input.json
 python -m tkcrawler.cli.run_step finalize_item < input.json
+python -m tkcrawler.cli.run_step limit_llm_items < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
@@ -136,6 +137,19 @@ return out
 ```
 
 Dieser Step ergaenzt `content_hash`, `source_type` und `tld` am `article` und setzt `content_hash` auch flach auf dem n8n-Item. Danach kann der bestehende History-/LLM-Pfad genutzt werden.
+
+n8n-Code-Node-Beispiel fuer `Limit LLM Items V2` direkt vor dem AI-Agent-Branch:
+
+```python
+from tkcrawler.steps.limit_llm_items import limit_llm_items
+
+out = []
+for limited in limit_llm_items(_items and [item["json"] for item in _items] or []):
+    out.append({"json": limited})
+return out
+```
+
+Der Step liest `effective_policy.max_llm_items_per_run` pro Quelle. Danach per IF auf `{{ $json.llm_decision === "process" }}` verzweigen. Ueberschuessige Items bekommen `llm_decision = "skip_run_limit"` und koennen ohne LLM gespeichert oder fuer spaetere Laeufe sichtbar gehalten werden.
 
 n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
 

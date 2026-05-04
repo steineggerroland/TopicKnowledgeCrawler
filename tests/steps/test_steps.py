@@ -8,6 +8,7 @@ from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_inge
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
 from tkcrawler.steps.finalize_item import finalize_item, finalize_item_step
+from tkcrawler.steps.limit_llm_items import limit_llm_items, limit_llm_items_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_item, plan_dispatch_step
@@ -505,6 +506,60 @@ def test_finalize_item_step_returns_envelope(mock_extract):
 
     assert result["ok"] is True
     assert result["items"][0]["content_hash"]
+
+
+def test_limit_llm_items_respects_policy_per_source():
+    out = limit_llm_items(
+        [
+            {"crawl_key": "s1", "article_id": "a1", "effective_policy": {"max_llm_items_per_run": 2}},
+            {"crawl_key": "s1", "article_id": "a2", "effective_policy": {"max_llm_items_per_run": 2}},
+            {"crawl_key": "s1", "article_id": "a3", "effective_policy": {"max_llm_items_per_run": 2}},
+        ]
+    )
+
+    assert [item["llm_decision"] for item in out] == ["process", "process", "skip_run_limit"]
+    assert out[2]["llm_reason"] == "max_llm_items_per_run_reached"
+
+
+def test_limit_llm_items_separates_sources():
+    out = limit_llm_items(
+        [
+            {"crawl_key": "s1", "article_id": "a1", "effective_policy": {"max_llm_items_per_run": 1}},
+            {"crawl_key": "s2", "article_id": "b1", "effective_policy": {"max_llm_items_per_run": 1}},
+            {"crawl_key": "s1", "article_id": "a2", "effective_policy": {"max_llm_items_per_run": 1}},
+        ]
+    )
+
+    assert [item["llm_decision"] for item in out] == ["process", "process", "skip_run_limit"]
+
+
+def test_limit_llm_items_allows_unlimited_by_default():
+    out = limit_llm_items(
+        [
+            {"crawl_key": "s1", "article_id": "a1"},
+            {"crawl_key": "s1", "article_id": "a2"},
+        ]
+    )
+
+    assert [item["llm_decision"] for item in out] == ["process", "process"]
+    assert [item["llm_reason"] for item in out] == ["no_run_limit", "no_run_limit"]
+
+
+def test_limit_llm_items_step_accepts_items_list():
+    result = limit_llm_items_step(
+        {
+            "item": {
+                "items": [
+                    {"crawl_key": "s1", "article_id": "a1"},
+                    {"crawl_key": "s1", "article_id": "a2"},
+                ]
+            },
+            "context": {"max_llm_items_per_run": 1},
+        }
+    )
+
+    assert result["ok"] is True
+    assert [item["llm_decision"] for item in result["items"]] == ["process", "skip_run_limit"]
 
 
 def test_cli_run_step_smoke():

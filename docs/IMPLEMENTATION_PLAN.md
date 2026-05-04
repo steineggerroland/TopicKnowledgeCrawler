@@ -62,6 +62,7 @@ python -m tkcrawler.cli.run_step list_candidates < input.json
 python -m tkcrawler.cli.run_step filter_candidates < input.json
 python -m tkcrawler.cli.run_step fetch_detail < input.json
 python -m tkcrawler.cli.run_step finalize_item < input.json
+python -m tkcrawler.cli.run_step limit_llm_items < input.json
 ```
 
 ## n8n-Input vs. CLI-Envelope
