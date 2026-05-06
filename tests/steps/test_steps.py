@@ -38,6 +38,24 @@ def test_normalize_source_accepts_infl0_fields():
     assert out["source_status"] == "needs_analysis"
 
 
+def test_normalize_source_accepts_split_out_source_wrapper():
+    out = normalize_source_item(
+        {
+            "source": {
+                "feedUrl": "https://example.com/feed.xml",
+                "crawlKey": "https://example.com/feed.xml",
+                "displayTitle": "Wrapped Feed",
+                "subscriberCount": 1,
+            }
+        }
+    )
+
+    assert out["crawl_key"] == "https://example.com/feed.xml"
+    assert out["url"] == "https://example.com/feed.xml"
+    assert out["name"] == "Wrapped Feed"
+    assert out["subscriber_count"] == 1
+
+
 def test_normalize_source_marks_configured_html_ready():
     out = normalize_source_item(
         {

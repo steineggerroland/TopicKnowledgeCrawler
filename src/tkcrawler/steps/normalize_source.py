@@ -16,6 +16,7 @@ def _first_str(row: Mapping[str, Any], *names: str) -> str:
 
 
 def normalize_source_item(row: Mapping[str, Any]) -> dict[str, Any]:
+    row = _source_row(row)
     url = _first_str(row, "url", "feedUrl")
     if not url:
         raise StepError("missing_url", "Source needs url or feedUrl")
@@ -59,6 +60,13 @@ def normalize_source_item(row: Mapping[str, Any]) -> dict[str, Any]:
     out["source_status"] = source_status
 
     return out
+
+
+def _source_row(row: Mapping[str, Any]) -> Mapping[str, Any]:
+    nested = row.get("source")
+    if isinstance(nested, Mapping):
+        return nested
+    return row
 
 
 def normalize_source_step(payload: Mapping[str, Any]) -> dict[str, Any]:
