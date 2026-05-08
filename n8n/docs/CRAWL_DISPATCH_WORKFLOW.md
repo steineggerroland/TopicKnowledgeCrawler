@@ -132,6 +132,69 @@ Empfohlen:
 
 Diese Trennung verhindert, dass der Dispatcher-Entscheid im Child versehentlich ueberschrieben wird.
 
+## Crawl-Abschluss aus Aggregates
+
+Wenn der Child-Crawl-Workflow seine Endpfade aggregiert, kann ein letzter Python-Step daraus den Source-Update-Payload bauen. Erwartete Aggregate-Felder:
+
+- `fetchErrorred` oder `fetchErrored`
+- `unchanged`
+- `processed`
+- `llmFailed`
+
+Die Felder duerfen Arrays oder bereits Zahlen sein.
+
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_item
+
+now = datetime.now(timezone.utc).isoformat()
+out = []
+for item in _items:
+    out.append({"json": finalize_crawl_run_item(item["json"], {"now": now})})
+return out
+```
+
+Der Step setzt:
+
+```json
+{
+  "last_crawl_status": "success|partial_failed|failed",
+  "last_crawl_finished_at": "2026-05-08T12:00:00+00:00",
+  "last_crawl_error": null,
+  "crawl_total_count": 12,
+  "crawl_fetch_error_count": 0,
+  "crawl_unchanged_count": 7,
+  "crawl_processed_count": 5,
+  "crawl_llm_failed_count": 0,
+  "last_crawl_result_json": "{\"total_count\":12,...}",
+  "consecutive_error_count": 0
+}
+```
+
+Status-Regeln:
+
+- `success`: keine Fetch- oder LLM-Fehler.
+- `partial_failed`: mindestens ein Erfolg (`processed` oder `unchanged`) und mindestens ein Fehler.
+- `failed`: Fehler, aber keine erfolgreichen Items.
+
+Empfohlenes Data-Table-Update in `crawl_sources`:
+
+- Filter: `crawl_key = {{$json.crawl_key}}`
+- `last_crawl_status = {{$json.last_crawl_status}}`
+- `last_crawl_finished_at = {{$json.last_crawl_finished_at}}`
+- `last_crawl_error = {{$json.last_crawl_error}}`
+- `last_crawl_result_json = {{$json.last_crawl_result_json}}`
+- `crawl_total_count = {{$json.crawl_total_count}}`
+- `crawl_fetch_error_count = {{$json.crawl_fetch_error_count}}`
+- `crawl_unchanged_count = {{$json.crawl_unchanged_count}}`
+- `crawl_processed_count = {{$json.crawl_processed_count}}`
+- `crawl_llm_failed_count = {{$json.crawl_llm_failed_count}}`
+- `consecutive_error_count = {{$json.consecutive_error_count}}`
+- optional `last_successful_crawl_at = {{$json.last_successful_crawl_at}}`
+
 ## Tabellenerweiterungen
 
 Der Dispatcher braucht diese Felder in `crawl_sources`:

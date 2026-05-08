@@ -9,6 +9,7 @@ from tkcrawler.steps.apply_html_analysis import apply_html_analysis_item, apply_
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
+from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_item, finalize_crawl_run_step
 from tkcrawler.steps.finalize_item import finalize_item, finalize_item_step
 from tkcrawler.steps.limit_llm_items import limit_llm_items, limit_llm_items_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
@@ -934,6 +935,76 @@ def test_fetch_detail_step_returns_envelope(mock_markdown):
 
     assert result["ok"] is True
     assert result["items"][0]["article"]["id"] == "a1"
+
+
+def test_finalize_crawl_run_marks_success_from_aggregates():
+    out = finalize_crawl_run_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "processed": [{"id": "a1"}, {"id": "a2"}],
+            "unchanged": [{"id": "a3"}],
+            "fetchErrorred": [],
+            "llmFailed": [],
+            "consecutive_error_count": 2,
+        },
+        {"now": "2026-05-08T12:00:00+00:00"},
+    )
+
+    assert out["last_crawl_status"] == "success"
+    assert out["last_crawl_error"] is None
+    assert out["last_successful_crawl_at"] == "2026-05-08T12:00:00+00:00"
+    assert out["crawl_total_count"] == 3
+    assert out["crawl_processed_count"] == 2
+    assert out["crawl_unchanged_count"] == 1
+    assert out["consecutive_error_count"] == 0
+
+
+def test_finalize_crawl_run_marks_partial_failure():
+    out = finalize_crawl_run_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "processed": 2,
+            "unchanged": 1,
+            "fetchErrored": [{"id": "a4"}],
+            "llmFailed": 1,
+        },
+        {"now": "2026-05-08T12:00:00+00:00"},
+    )
+
+    assert out["last_crawl_status"] == "partial_failed"
+    assert out["crawl_fetch_error_count"] == 1
+    assert out["crawl_llm_failed_count"] == 1
+    assert out["last_crawl_error"] == "1 fetch error(s), 1 LLM failure(s)"
+
+
+def test_finalize_crawl_run_marks_failed_without_successes():
+    out = finalize_crawl_run_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "fetchErrorred": [{"id": "a1"}],
+            "consecutive_error_count": 2,
+        },
+        {"now": "2026-05-08T12:00:00+00:00"},
+    )
+
+    assert out["last_crawl_status"] == "failed"
+    assert out["consecutive_error_count"] == 3
+    assert out["last_crawl_error"] == "1 fetch error(s)"
+
+
+def test_finalize_crawl_run_step_returns_envelope():
+    result = finalize_crawl_run_step(
+        {
+            "item": {
+                "crawl_key": "https://example.com/feed",
+                "processed": 1,
+            },
+            "context": {"now": "2026-05-08T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["last_crawl_status"] == "success"
 
 
 @patch("tkcrawler.infl0_payload.tldextract.extract")
