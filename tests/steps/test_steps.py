@@ -941,6 +941,8 @@ def test_finalize_crawl_run_marks_success_from_aggregates():
     out = finalize_crawl_run_item(
         {
             "crawl_key": "https://example.com/feed",
+            "candidateCount": 4,
+            "skipped": [{"id": "a4"}],
             "processed": [{"id": "a1"}, {"id": "a2"}],
             "unchanged": [{"id": "a3"}],
             "fetchErrorred": [],
@@ -953,7 +955,9 @@ def test_finalize_crawl_run_marks_success_from_aggregates():
     assert out["last_crawl_status"] == "success"
     assert out["last_crawl_error"] is None
     assert out["last_successful_crawl_at"] == "2026-05-08T12:00:00+00:00"
-    assert out["crawl_total_count"] == 3
+    assert out["crawl_total_count"] == 4
+    assert out["crawl_candidate_count"] == 4
+    assert out["crawl_skipped_count"] == 1
     assert out["crawl_processed_count"] == 2
     assert out["crawl_unchanged_count"] == 1
     assert out["consecutive_error_count"] == 0
@@ -990,6 +994,21 @@ def test_finalize_crawl_run_marks_failed_without_successes():
     assert out["last_crawl_status"] == "failed"
     assert out["consecutive_error_count"] == 3
     assert out["last_crawl_error"] == "1 fetch error(s)"
+
+
+def test_finalize_crawl_run_marks_no_candidates_as_success():
+    out = finalize_crawl_run_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "candidateCount": 0,
+        },
+        {"now": "2026-05-08T12:00:00+00:00"},
+    )
+
+    assert out["last_crawl_status"] == "success"
+    assert out["crawl_total_count"] == 0
+    assert out["crawl_candidate_count"] == 0
+    assert out["last_crawl_error"] is None
 
 
 def test_finalize_crawl_run_step_returns_envelope():

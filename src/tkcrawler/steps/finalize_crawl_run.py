@@ -8,6 +8,8 @@ from tkcrawler.steps._runtime import StepError, ok, split_input
 
 
 COUNT_FIELDS = {
+    "candidate_count": ("candidateCount", "candidate_count", "candidates"),
+    "skipped_count": ("skipped", "skippedCandidates", "skipped_candidates", "notFetched", "not_fetched"),
     "fetch_error_count": ("fetchErrorred", "fetchErrored", "fetch_failed", "fetch_errors"),
     "unchanged_count": ("unchanged", "unchanged_items"),
     "processed_count": ("processed", "processed_items"),
@@ -24,8 +26,9 @@ def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] |
 
     counts = {name: _count_first(row, *aliases) for name, aliases in COUNT_FIELDS.items()}
     error_count = counts["fetch_error_count"] + counts["llm_failed_count"]
-    success_count = counts["unchanged_count"] + counts["processed_count"]
-    total_count = error_count + success_count
+    success_count = counts["unchanged_count"] + counts["processed_count"] + counts["skipped_count"]
+    terminal_count = error_count + success_count
+    total_count = counts["candidate_count"] if counts["candidate_count"] > 0 else terminal_count
 
     if error_count == 0:
         status = "success"
@@ -53,6 +56,8 @@ def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] |
         "last_crawl_error": error,
         "last_crawl_result_json": json.dumps(result, ensure_ascii=False),
         "crawl_total_count": total_count,
+        "crawl_candidate_count": counts["candidate_count"],
+        "crawl_skipped_count": counts["skipped_count"],
         "crawl_fetch_error_count": counts["fetch_error_count"],
         "crawl_unchanged_count": counts["unchanged_count"],
         "crawl_processed_count": counts["processed_count"],

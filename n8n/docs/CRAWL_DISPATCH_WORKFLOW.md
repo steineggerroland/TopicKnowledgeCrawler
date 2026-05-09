@@ -136,12 +136,26 @@ Diese Trennung verhindert, dass der Dispatcher-Entscheid im Child versehentlich 
 
 Wenn der Child-Crawl-Workflow seine Endpfade aggregiert, kann ein letzter Python-Step daraus den Source-Update-Payload bauen. Erwartete Aggregate-Felder:
 
+- `candidateCount`
+- `skipped` oder `skippedCandidates`
 - `fetchErrorred` oder `fetchErrored`
 - `unchanged`
 - `processed`
 - `llmFailed`
 
 Die Felder duerfen Arrays oder bereits Zahlen sein.
+
+Empfohlene n8n-Verdrahtung:
+
+- Direkt nach `List Candidates` die Kandidaten zaehlen und `candidateCount` bis
+  zum Abschlussflow mitgeben.
+- Kandidaten mit `candidate_decision != fetch` in einen eigenen Abschlusszweig
+  fuehren und als `skipped` aggregieren.
+- Wenn `List Candidates` keine Items erzeugt, trotzdem ein Abschluss-Item mit
+  `crawl_key` und `candidateCount = 0` erzeugen. Sonst hat n8n kein Item mehr,
+  das den Crawl erfolgreich abschliessen kann.
+- Der bisherige `if fetch`-False-Branch sollte daher nicht leer bleiben,
+  sondern in ein skipped/no-fetch Aggregat laufen.
 
 n8n Native-Python:
 
@@ -165,6 +179,8 @@ Der Step setzt:
   "last_crawl_finished_at": "2026-05-08T12:00:00+00:00",
   "last_crawl_error": null,
   "crawl_total_count": 12,
+  "crawl_candidate_count": 12,
+  "crawl_skipped_count": 0,
   "crawl_fetch_error_count": 0,
   "crawl_unchanged_count": 7,
   "crawl_processed_count": 5,
@@ -188,6 +204,8 @@ Empfohlenes Data-Table-Update in `crawl_sources`:
 - `last_crawl_error = {{$json.last_crawl_error}}`
 - `last_crawl_result_json = {{$json.last_crawl_result_json}}`
 - `crawl_total_count = {{$json.crawl_total_count}}`
+- optional `crawl_candidate_count = {{$json.crawl_candidate_count}}`
+- optional `crawl_skipped_count = {{$json.crawl_skipped_count}}`
 - `crawl_fetch_error_count = {{$json.crawl_fetch_error_count}}`
 - `crawl_unchanged_count = {{$json.crawl_unchanged_count}}`
 - `crawl_processed_count = {{$json.crawl_processed_count}}`
@@ -214,6 +232,8 @@ Optional:
 - `last_successful_crawl_at`
 - `consecutive_error_count`
 - `last_http_status`
+- `crawl_candidate_count`
+- `crawl_skipped_count`
 
 ## Kurzfristige Migration
 
