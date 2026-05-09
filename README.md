@@ -1,11 +1,11 @@
 # Content Collector
 
-Ein **Content Collector** zur automatisierten Sammlung und Aufbereitung von Informationen aus RSS-Feeds. Die Daten werden gespeichert, zusammengefasst und kategorisiert mithilfe von **OpenAI GPT**.
+Ein **Content Collector** zur automatisierten Sammlung und Aufbereitung von Informationen aus RSS-Feeds. Die Daten werden gespeichert, zusammengefasst und kategorisiert mithilfe eines **lokalen Ollama**-Modells (Standard).
 
 ## Features
 - Automatisches Sammeln von Artikeln aus RSS-Feeds
 - Speicherung von Rohdaten und Archivierung
-- Text-Zusammenfassung (Kurz- und Langform) durch GPT-Integration
+- Text-Zusammenfassung (Kurz- und Langform) über Ollama
 - Kategorisierung und Bewertung der Relevanz der Inhalte
 - Ausgabe der aufbereiteten Daten als JSON-Dateien
 
@@ -26,11 +26,9 @@ Ein **Content Collector** zur automatisierten Sammlung und Aufbereitung von Info
    pip install -r requirements.txt
    ```
 
-3. **API-Schlüssel einrichten**:
-   - Erstelle eine `.env`-Datei im Projektverzeichnis:
-     ```plaintext
-     OPENAI_API_KEY=your_openai_api_key_here
-     ```
+3. **LLM (Ollama)**:
+   - [Ollama](https://ollama.com/) installieren und starten; die benötigten Modelle ziehen (z. B. `qwen2.5`, `qwen2.5:14b` — siehe `src/crawler/utils/llm_prompter.py`).
+   - Optional in `.env`: `LLM_PROVIDER=ollama` (Standard; andere Werte werden nicht mehr unterstützt).
 
 ---
 
@@ -86,7 +84,7 @@ content_collector/
 │
 ├── src/                      
 │   ├── collector.py           # Informationssammler
-│   ├── summarizer.py          # Wissensextraktion und GPT-Integration
+│   ├── summarizer.py          # Wissensextraktion und Ollama-Anbindung
 │   ├── archiver.py            # Rohdatenarchivierung
 │   └── utils/                 # Hilfsfunktionen
 │

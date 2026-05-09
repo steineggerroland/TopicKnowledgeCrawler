@@ -10,9 +10,6 @@ on:
       - main
       - develop
 
-env:
-  OPENAI_API_KEY: No key is my key and my key is no key
-
 jobs:
   test:
     name: Run Tests on Python

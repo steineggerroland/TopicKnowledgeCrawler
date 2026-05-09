@@ -17,7 +17,7 @@ from crawler.utils.text_processor import clean_json_response
 logger = getLogger(__name__)
 
 load_dotenv()
-LLM_PROVIDER_NAME = os.getenv("LLM_PROVIDER", "ollama")  # Default to OpenAI
+LLM_PROVIDER_NAME = os.getenv("LLM_PROVIDER", "ollama")
 
 # Initialize the LLM prompter
 llm_prompter = LlmPrompter(LLM_PROVIDER_NAME)

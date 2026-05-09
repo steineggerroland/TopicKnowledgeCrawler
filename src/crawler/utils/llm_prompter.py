@@ -1,12 +1,9 @@
 import json
-import os
-import time
 from functools import reduce
 from logging import DEBUG
 
 from dotenv import load_dotenv
 from ollama import chat
-from openai import OpenAI
 
 from crawler.utils.logger import getLogger
 from crawler.utils.text_processor import clean_json_response
@@ -24,54 +21,15 @@ RATINGS = ["high", "medium", "low"]
 
 class LlmPrompter:
     def __init__(self, provider_name):
+        if provider_name != "ollama":
+            raise ValueError(
+                f"Unsupported LLM provider: {provider_name!r}. "
+                "Only 'ollama' is supported; unset LLM_PROVIDER or set LLM_PROVIDER=ollama."
+            )
         self.provider_name = provider_name
-        if provider_name == "openai":
-            self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        elif provider_name == "ollama":
-            pass
-        else:
-            raise ValueError(f"Unsupported LLM provider: {provider_name}")
 
     def summarize_article_json(self, text, old_text=None) -> dict:
-        if self.provider_name == "openai":
-            return self._summarize_with_openai(text, old_text)
-        elif self.provider_name == "ollama":
-            return self._summarize_with_ollama(text, old_text)
-        else:
-            raise ValueError(f"Unsupported LLM provider: {self.provider_name}")
-
-    def _summarize_with_openai(self, text, old_text):
-        prompt = self._build_prompt(text, old_text)
-
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system",
-                     "content": "You are a creative summarization assistant and expert content analyst."},
-                    {"role": "user", "content": prompt}
-                ]
-            )
-        except Exception as exception:
-            if 'context_length_exceeded' in str(exception):
-                response = self.client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[
-                        {"role": "system",
-                         "content": "You are a creative summarization assistant and expert content analyst."},
-                        {"role": "user", "content": prompt}
-                    ]
-                )
-            else:
-                raise exception
-
-        raw_content = response.choices[0].message.content
-        cleaned_content = clean_json_response(raw_content)
-
-        try:
-            return json.loads(cleaned_content)
-        except json.JSONDecodeError as e:
-            logger.error("Failed to decode JSON response: %s", e)
+        return self._summarize_with_ollama(text, old_text)
 
     def _summarize_with_ollama(self, text, old_text):
         try:
@@ -155,35 +113,6 @@ class LlmPrompter:
             raise "LLM failed to categorize text."
         return categories_and_tags
 
-    def _build_prompt(self, text, old_text):
-        changes_attribute_text = '"changes": "..."'
-        return f'''
-        You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following article and:
-        1. Provide a short teaser of no more than 200 characters to intrigue the reader.
-        2. Summarize the article in an engaging and concise tone, while maintaining its unique style (e.g., factual, humorous, or critical).
-        3. Categorize the article into one or more of the following categories: [{(",".join(CATEGORIES))}].
-        4. Assign a seriousness rating to the article based on its credibility and reliability:
-            • High: Credible and well-founded (e.g., academic articles, scientific studies).
-            • Medium: Solid, but subjective or less verified (e.g., expert opinions, journalistic articles).
-            • Low: Poorly founded, polemical, or possibly inaccurate (e.g., Reddit discussions, blog rants).
-        5. Add relevant tags or keywords that describe the article content.
-        {"6. Describe changes between the old and new text if applicable." if old_text else ""}
-
-        Respond in this exact format:
-        {{
-            "teaser": "...",
-            "summary_long": "...",
-            "category": ["..."],
-            "tags": ["...", "..."],
-            "seriousness_rating": "high/medium/low"{"," if old_text else ""}
-            {changes_attribute_text if old_text else ""}
-        }}
-
-        Article Text: {text}
-
-        {"Old Text: " + old_text if old_text else ""}
-        '''
-
     def _build_categorizing_prompt(self, text):
         return f'''
         You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries.
@@ -249,35 +178,11 @@ class LlmPrompter:
         '''
 
     def query(self, messages, model_size):
-        if self.provider_name == "openai":
-            return self._query_openai(messages, model_size)
-        elif self.provider_name == "ollama":
-            return self._query_ollama(messages, model_size)
-        else:
-            raise ValueError(f"Unsupported LLM provider: {self.provider_name}")
-
-    def _query_openai(self, messages, model_size):
-        """
-        Queries the ChatGPT with the prompt.
-        """
-        try:
-            model = "gpt-4o-mini" if model_size == "large" else "gpt-3.5-turbo"
-
-            response = self.client.chat.completions.create(
-                model=model,
-                messages=messages
-            )
-            if model_size == "large":
-                time.sleep(120)  # avoid rate limit for large models
-            raw_content = response.choices[0].message.content
-            return raw_content
-        except (json.JSONDecodeError, KeyError):
-            logger.error(f"Failed to query llm: {response}")
-            return ""
+        return self._query_ollama(messages, model_size)
 
     def _query_ollama(self, messages, model_size):
         """
-        Queries the ChatGPT with the prompt.
+        Queries Ollama with the prompt.
         """
         try:
             model = "qwen2.5:14b" if model_size == "large" else "qwen2.5"

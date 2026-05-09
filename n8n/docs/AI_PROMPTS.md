@@ -1,6 +1,6 @@
 # AI-Node Prompts (n8n)
 
-Der klassische `LlmPrompter._build_prompt` (OpenAI-Pfad) liefert **ein JSON** mit Teaser, Langtext, Kategorien, Tags und Seriousness. Das eignet sich für **einen** „Basic LLM Chain“- oder „OpenAI“-Node mit strukturierter Ausgabe.
+Der **lokale** Crawler nutzt nur noch **Ollama** und mehrere kleine Prompts (`llm_prompter.py`). Für **n8n** passt der folgende **einstufige** User-Prompt gut zu **einem** AI-/LLM-Node mit strukturierter JSON-Ausgabe (Modell frei wählbar).
 
 ## System-Rolle (Vorschlag)
 

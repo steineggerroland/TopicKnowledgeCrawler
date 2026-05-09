@@ -15,7 +15,7 @@ class TestSummarizerBasicFunctionality(unittest.TestCase):
     @patch("os.makedirs")
     @patch("os.path.exists", side_effect=lambda p: p == "article.md")
     @patch("builtins.open", new_callable=mock_open, read_data="# Test Article\n\nContent")
-    def test_happy_path(self, mock_open, mock_exists, mock_makedirs, mock_openai):
+    def test_happy_path(self, mock_open, mock_exists, mock_makedirs, _mock_summarize_json):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"
@@ -41,7 +41,7 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
 
     @patch("os.path.exists", side_effect=lambda p: p == "article.json")
     @patch("builtins.open", new_callable=mock_open)
-    def test_unchanged_content_skips_processing(self, mock_exists, mock_open, mock_openai):
+    def test_unchanged_content_skips_processing(self, mock_exists, mock_open, _mock_summarize_json):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"
@@ -57,7 +57,7 @@ class TestSummarizerHashAndHistory(unittest.TestCase):
 
     @patch("os.path.exists", side_effect=lambda p: p == "article.json")
     @patch("builtins.open", new_callable=mock_open)
-    def test_changed_content_triggers_processing(self, mock_exists, mock_open, mock_openai):
+    def test_changed_content_triggers_processing(self, mock_exists, mock_open, _mock_summarize_json):
         # Given
         input_path = "article.json"
         output_path = "processed_article.json"

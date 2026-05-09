@@ -11,10 +11,9 @@ requires-python = ">=3.10"
 dependencies = [
   "beautifulsoup4>=4.12",
   "feedparser>=6.0",
-  "Requests>=2.32",
+  "requests>=2.32",
   "tldextract>=5.1",
   "trafilatura>=2.0",
-  "openai>=1.0",
   "python-dotenv>=1.0",
   "ollama>=0.4",
   "fuzzywuzzy>=0.18",
