@@ -7,6 +7,7 @@ from tkcrawler.steps.filter_candidates import filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_step
 from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_step
 from tkcrawler.steps.finalize_item import finalize_item_step
+from tkcrawler.steps.inspect_source_policy import inspect_source_policy_step
 from tkcrawler.steps.limit_llm_items import limit_llm_items_step
 from tkcrawler.steps.list_candidates import list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_step
@@ -22,6 +23,7 @@ STEP_REGISTRY = {
     "fetch_detail": fetch_detail_step,
     "finalize_crawl_run": finalize_crawl_run_step,
     "finalize_item": finalize_item_step,
+    "inspect_source_policy": inspect_source_policy_step,
     "limit_llm_items": limit_llm_items_step,
     "list_candidates": list_candidates_step,
     "normalize_source": normalize_source_step,
@@ -39,6 +41,7 @@ __all__ = [
     "fetch_detail_step",
     "finalize_crawl_run_step",
     "finalize_item_step",
+    "inspect_source_policy_step",
     "limit_llm_items_step",
     "list_candidates_step",
     "normalize_source_step",

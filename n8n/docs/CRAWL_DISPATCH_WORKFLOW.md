@@ -53,11 +53,14 @@ Zusaetzlich in n8n oder Python pruefen:
 1. Manual Trigger, Webhook Trigger oder Schedule Trigger.
 2. `Set Dispatch Context`: setzt `dispatch_mode` (`scheduled`, `manual`, `force`) und `dispatch_started_at`.
 3. `Get row(s)`: grober Filter auf `active = true`.
-4. `Python: Plan Dispatch`: prueft pro Quelle Policy, Status und Faelligkeit.
-5. `IF should_dispatch`.
-6. `Data Table: Mark Crawl Started`: setzt `last_crawl_started_at`, `last_crawl_status = running`.
-7. `Execute Workflow`: ruft Crawl-Workflow pro Quelle auf.
-8. `Data Table: Mark Crawl Finished`: setzt `last_crawl_finished_at`, `last_crawl_status`, `last_crawl_error`, `next_allowed_crawl_at`.
+4. `Python: Inspect Source Policy`: liest guenstige Source-Hinweise wie
+   RSS `ttl`, HTTP Cache-Header und `Retry-After`.
+5. `Data Table: Update Detected Policy`: speichert die erkannten Hinweise.
+6. `Python: Plan Dispatch`: prueft pro Quelle Policy, Status und Faelligkeit.
+7. `IF should_dispatch`.
+8. `Data Table: Mark Crawl Started`: setzt `last_crawl_started_at`, `last_crawl_status = running`.
+9. `Execute Workflow`: ruft Crawl-Workflow pro Quelle auf.
+10. `Data Table: Mark Crawl Finished`: setzt `last_crawl_finished_at`, `last_crawl_status`, `last_crawl_error`, `next_allowed_crawl_at`.
 
 Bei `manual` oder `force` kann `Python: Plan Dispatch` die Intervallpruefung ueberschreiben, sollte aber harte Limits wie `Retry-After` weiterhin respektieren, sofern nicht explizit anders gewuenscht.
 
@@ -67,6 +70,61 @@ Wichtig fuer die Verdrahtung: Der Child-Crawl-Workflow sollte das geplante Item 
 - IF True -> `Execute Workflow`
 
 oder alternativ nach dem Update die geplanten Felder wieder per Merge/Set aus dem IF-Input herstellen.
+
+## `Python: Inspect Source Policy`
+
+Input: Source-Zeile aus `crawl_sources`.
+
+Output:
+
+```json
+{
+  "crawl_key": "https://example.com/feed.xml",
+  "detected_policy_json": "{\"http_status\":200,\"rss_ttl_minutes\":60,\"etag\":\"...\"}",
+  "detected_policy_checked_at": "2026-05-09T12:00:00+00:00",
+  "detected_policy_error": null
+}
+```
+
+Der Step trifft keine Dispatch-Entscheidung. Er erkennt nur Hinweise:
+
+- HTTP Status
+- `ETag`
+- `Last-Modified`
+- `Cache-Control` und `max-age`
+- `Expires`
+- `Retry-After`
+- RSS/Atom `ttl`
+
+n8n Native-Python:
+
+```python
+from datetime import datetime, timezone
+
+from tkcrawler.steps.inspect_source_policy import inspect_source_policy_item
+
+now = datetime.now(timezone.utc).isoformat()
+verify = "/etc/ssl/certs/ca-certificates.crt"
+
+out = []
+for item in _items:
+    out.append(
+        {
+            "json": inspect_source_policy_item(
+                item["json"],
+                {"now": now, "verify": verify, "timeout_seconds": 10},
+            )
+        }
+    )
+return out
+```
+
+Empfohlenes Data-Table-Update danach:
+
+- Filter: `crawl_key = {{$json.crawl_key}}`
+- `detected_policy_json = {{$json.detected_policy_json}}`
+- `detected_policy_checked_at = {{$json.detected_policy_checked_at}}`
+- `detected_policy_error = {{$json.detected_policy_error}}`
 
 ## `Python: Plan Dispatch`
 

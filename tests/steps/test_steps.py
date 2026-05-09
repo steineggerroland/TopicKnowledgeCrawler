@@ -11,6 +11,7 @@ from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_cand
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
 from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_item, finalize_crawl_run_step
 from tkcrawler.steps.finalize_item import finalize_item, finalize_item_step
+from tkcrawler.steps.inspect_source_policy import inspect_source_policy_item, inspect_source_policy_step
 from tkcrawler.steps.limit_llm_items import limit_llm_items, limit_llm_items_step
 from tkcrawler.steps.list_candidates import list_candidates_items, list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_item, normalize_source_step
@@ -146,6 +147,86 @@ def test_analyze_source_step_returns_envelope(mock_get):
 
     assert result["ok"] is True
     assert result["items"][0]["type"] == "html"
+
+
+@patch("tkcrawler.steps.inspect_source_policy.requests.get")
+def test_inspect_source_policy_extracts_http_headers_and_rss_ttl(mock_get):
+    response = Mock()
+    response.status_code = 200
+    response.headers = {
+        "etag": '"abc"',
+        "last-modified": "Sat, 09 May 2026 09:00:00 GMT",
+        "cache-control": "public, max-age=600",
+        "content-type": "application/rss+xml",
+    }
+    response.text = "<rss><channel><ttl>45</ttl><item><title>One</title></item></channel></rss>"
+    mock_get.return_value = response
+
+    out = inspect_source_policy_item(
+        {"url": "https://example.com/feed.xml", "type": "rss"},
+        {"now": "2026-05-09T12:00:00+00:00"},
+    )
+
+    detected = json.loads(out["detected_policy_json"])
+    assert detected["http_status"] == 200
+    assert detected["etag"] == '"abc"'
+    assert detected["last_modified"] == "Sat, 09 May 2026 09:00:00 GMT"
+    assert detected["cache_max_age_seconds"] == 600
+    assert detected["rss_ttl_minutes"] == 45
+    assert out["detected_policy_error"] is None
+
+
+@patch("tkcrawler.steps.inspect_source_policy.requests.get")
+def test_inspect_source_policy_extracts_retry_after_seconds(mock_get):
+    response = Mock()
+    response.status_code = 429
+    response.headers = {
+        "retry-after": "120",
+        "content-type": "text/html",
+    }
+    response.text = "<html></html>"
+    mock_get.return_value = response
+
+    out = inspect_source_policy_item(
+        {"url": "https://example.com/articles", "type": "html"},
+        {"now": "2026-05-09T12:00:00+00:00"},
+    )
+
+    detected = json.loads(out["detected_policy_json"])
+    assert detected["http_status"] == 429
+    assert detected["retry_after_seconds"] == 120
+
+
+@patch("tkcrawler.steps.inspect_source_policy.requests.get")
+def test_inspect_source_policy_reports_fetch_error(mock_get):
+    mock_get.side_effect = Exception("network down")
+
+    out = inspect_source_policy_item(
+        {"url": "https://example.com/feed.xml"},
+        {"now": "2026-05-09T12:00:00+00:00"},
+    )
+
+    assert json.loads(out["detected_policy_json"]) == {}
+    assert out["detected_policy_error"] == "network down"
+
+
+@patch("tkcrawler.steps.inspect_source_policy.requests.get")
+def test_inspect_source_policy_step_returns_envelope(mock_get):
+    response = Mock()
+    response.status_code = 200
+    response.headers = {"content-type": "text/html"}
+    response.text = "<html></html>"
+    mock_get.return_value = response
+
+    result = inspect_source_policy_step(
+        {
+            "item": {"url": "https://example.com/articles"},
+            "context": {"now": "2026-05-09T12:00:00+00:00"},
+        }
+    )
+
+    assert result["ok"] is True
+    assert json.loads(result["items"][0]["detected_policy_json"])["http_status"] == 200
 
 
 @patch("tkcrawler.steps.prepare_html_analysis.requests.get")
