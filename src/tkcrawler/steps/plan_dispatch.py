@@ -49,6 +49,11 @@ def _merge_policy(row: Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(ttl, (int, float)) and ttl > 0:
         policy["crawl_interval_minutes"] = max(policy["crawl_interval_minutes"], int(ttl))
 
+    max_age = detected.get("cache_max_age_seconds")
+    if isinstance(max_age, (int, float)) and max_age > 0:
+        max_age_minutes = max(1, int(max_age / 60))
+        policy["crawl_interval_minutes"] = max(policy["crawl_interval_minutes"], max_age_minutes)
+
     policy.update(manual)
     policy.update(effective)
     return policy
@@ -65,6 +70,34 @@ def _retry_after_until(row: Mapping[str, Any], now: datetime) -> datetime | None
         base = _parse_dt(row.get("last_crawl_finished_at")) or now
         return base + timedelta(seconds=float(seconds))
     return None
+
+
+def _cache_until(row: Mapping[str, Any]) -> datetime | None:
+    detected = parse_json_object(row.get("detected_policy_json", row.get("detected_policy")), field="detected_policy_json")
+    expires = _parse_http_dt(detected.get("expires"))
+    if expires:
+        return expires
+
+    max_age = detected.get("cache_max_age_seconds")
+    if isinstance(max_age, (int, float)) and max_age > 0:
+        base = _parse_dt(row.get("detected_policy_checked_at")) or _parse_dt(row.get("last_crawl_finished_at"))
+        if base:
+            return base + timedelta(seconds=float(max_age))
+    return None
+
+
+def _parse_http_dt(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        from email.utils import parsedate_to_datetime
+
+        dt = parsedate_to_datetime(str(value))
+    except (TypeError, ValueError):
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -100,6 +133,8 @@ def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None
                 should, reason = False, "not_due"
             elif retry_until and retry_until > now:
                 should, reason = False, "retry_after_active"
+            elif (cache_until := _cache_until(row)) and cache_until > now:
+                should, reason = False, "cache_fresh"
             elif str(row.get("last_crawl_status") or "").strip() == "running":
                 started = _parse_dt(row.get("last_crawl_started_at"))
                 stale_after = timedelta(minutes=float(policy.get("stale_running_minutes", 120)))

@@ -154,6 +154,7 @@ Moegliche `dispatch_reason`-Werte:
 - `inactive`
 - `source_not_ready`
 - `html_configuration_invalid`
+- `cache_fresh`
 - `rate_limited`
 - `retry_after_active`
 - `already_running`
@@ -166,15 +167,19 @@ Prioritaet:
 
 1. Wenn `next_allowed_crawl_at` in der Zukunft liegt: nicht dispatchen.
 2. Wenn ein hartes `Retry-After` aktiv ist: nicht dispatchen.
-3. Wenn `source_status != ready`: nicht dispatchen.
-4. Wenn HTML-Konfiguration fehlt oder invalid ist: nicht dispatchen.
-5. Wenn `last_crawl_status = running` und nicht stale: nicht dispatchen.
-6. Sonst dispatchen, wenn das effektive Intervall abgelaufen ist.
+3. Wenn erkannte HTTP-Cache-Hinweise (`Expires` oder `Cache-Control: max-age`)
+   noch frisch sind: nicht dispatchen (`cache_fresh`).
+4. Wenn `source_status != ready`: nicht dispatchen.
+5. Wenn HTML-Konfiguration fehlt oder invalid ist: nicht dispatchen.
+6. Wenn `last_crawl_status = running` und nicht stale: nicht dispatchen.
+7. Sonst dispatchen, wenn das effektive Intervall abgelaufen ist.
 
 `next_allowed_crawl_at` sollte nach jedem Crawl neu berechnet werden:
 
 - erfolgreiche Quelle: `last_crawl_finished_at + crawl_interval_minutes`
 - 429/503 mit `Retry-After`: `now + retry_after`
+- HTTP `Cache-Control: max-age` und RSS `ttl` koennen das effektive
+  `crawl_interval_minutes` konservativ verlaengern.
 - Fehler ohne Retry-After: kurzer Backoff, zum Beispiel 15 bis 60 Minuten
 - manuell gesetzte Policy darf konservativer sein als automatisch erkannte Hinweise
 

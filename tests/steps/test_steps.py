@@ -412,6 +412,53 @@ def test_plan_dispatch_skips_not_due_source():
     assert out["dispatch_reason"] == "not_due"
 
 
+def test_plan_dispatch_uses_detected_cache_max_age_for_interval():
+    out = plan_dispatch_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "type": "rss",
+            "source_status": "ready",
+            "detected_policy_json": json.dumps({"cache_max_age_seconds": 14400}),
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["should_dispatch"] is True
+    assert out["effective_policy"]["crawl_interval_minutes"] == 240
+    assert out["next_allowed_crawl_at"] == "2026-05-04T16:00:00+00:00"
+
+
+def test_plan_dispatch_skips_when_cache_is_fresh():
+    out = plan_dispatch_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "type": "rss",
+            "source_status": "ready",
+            "detected_policy_checked_at": "2026-05-04T11:30:00+00:00",
+            "detected_policy_json": json.dumps({"cache_max_age_seconds": 3600}),
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["should_dispatch"] is False
+    assert out["dispatch_reason"] == "cache_fresh"
+
+
+def test_plan_dispatch_skips_until_detected_expires():
+    out = plan_dispatch_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "type": "rss",
+            "source_status": "ready",
+            "detected_policy_json": json.dumps({"expires": "Mon, 04 May 2026 13:00:00 GMT"}),
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["should_dispatch"] is False
+    assert out["dispatch_reason"] == "cache_fresh"
+
+
 def test_plan_dispatch_next_allowed_wins_over_stale_running_status():
     out = plan_dispatch_item(
         {
