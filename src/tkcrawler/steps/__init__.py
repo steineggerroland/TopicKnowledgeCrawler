@@ -3,6 +3,7 @@
 from tkcrawler.steps.analyze_source import analyze_source_step
 from tkcrawler.steps.apply_html_analysis import apply_html_analysis_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_step
+from tkcrawler.steps.derive_source_health import derive_source_health_step
 from tkcrawler.steps.filter_candidates import filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_step
 from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_step
@@ -19,6 +20,7 @@ STEP_REGISTRY = {
     "analyze_source": analyze_source_step,
     "apply_html_analysis": apply_html_analysis_step,
     "build_ingest_body": build_ingest_body_step,
+    "derive_source_health": derive_source_health_step,
     "filter_candidates": filter_candidates_step,
     "fetch_detail": fetch_detail_step,
     "finalize_crawl_run": finalize_crawl_run_step,
@@ -37,6 +39,7 @@ __all__ = [
     "analyze_source_step",
     "apply_html_analysis_step",
     "build_ingest_body_step",
+    "derive_source_health_step",
     "filter_candidates_step",
     "fetch_detail_step",
     "finalize_crawl_run_step",

@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 from tkcrawler.steps.analyze_source import analyze_source_item, analyze_source_step
 from tkcrawler.steps.apply_html_analysis import apply_html_analysis_item, apply_html_analysis_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
+from tkcrawler.steps.derive_source_health import derive_source_health_item, derive_source_health_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
 from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_item, finalize_crawl_run_step
@@ -1152,6 +1153,95 @@ def test_finalize_crawl_run_step_returns_envelope():
 
     assert result["ok"] is True
     assert result["items"][0]["last_crawl_status"] == "success"
+
+
+def test_derive_source_health_marks_pending_source():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "active": True,
+            "source_status": "ready",
+        }
+    )
+
+    assert out["source_health_status"] == "pending"
+    assert out["source_health_reason"] == "never_crawled"
+    assert out["operator_attention"] is False
+
+
+def test_derive_source_health_marks_needs_setup():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/articles",
+            "source_status": "needs_analysis",
+            "type": "html",
+        }
+    )
+
+    assert out["source_health_status"] == "needs_setup"
+    assert out["source_health_reason"] == "needs_analysis"
+
+
+def test_derive_source_health_marks_degraded_with_attention():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_status": "ready",
+            "last_crawl_status": "partial_failed",
+            "crawl_fetch_error_count": 3,
+            "crawl_processed_count": 0,
+        }
+    )
+
+    assert out["source_health_status"] == "degraded"
+    assert out["operator_attention"] is True
+    assert out["operator_attention_reason"] == "fetch_errors_without_processed_items"
+
+
+def test_derive_source_health_marks_blocked_from_detected_policy():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_status": "ready",
+            "last_crawl_status": "success",
+            "detected_policy_json": json.dumps({"http_status": 403}),
+        }
+    )
+
+    assert out["source_health_status"] == "blocked"
+    assert out["source_health_reason"] == "http_403"
+    assert out["operator_attention"] is True
+
+
+def test_derive_source_health_marks_quiet_no_candidates():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_status": "ready",
+            "last_crawl_status": "success",
+            "crawl_candidate_count": 0,
+        }
+    )
+
+    assert out["source_health_status"] == "quiet"
+    assert out["source_health_reason"] == "no_candidates"
+    assert out["operator_attention"] is False
+
+
+def test_derive_source_health_step_returns_envelope():
+    result = derive_source_health_step(
+        {
+            "item": {
+                "crawl_key": "https://example.com/feed",
+                "source_status": "ready",
+                "last_crawl_status": "success",
+                "crawl_candidate_count": 1,
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["source_health_status"] == "healthy"
 
 
 @patch("tkcrawler.infl0_payload.tldextract.extract")

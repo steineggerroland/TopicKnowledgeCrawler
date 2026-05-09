@@ -61,6 +61,8 @@ Zusaetzlich in n8n oder Python pruefen:
 8. `Data Table: Mark Crawl Started`: setzt `last_crawl_started_at`, `last_crawl_status = running`.
 9. `Execute Workflow`: ruft Crawl-Workflow pro Quelle auf.
 10. `Data Table: Mark Crawl Finished`: setzt `last_crawl_finished_at`, `last_crawl_status`, `last_crawl_error`, `next_allowed_crawl_at`.
+11. Optional `Python: Derive Source Health`: berechnet nutzerinnen- und
+    betreiberfreundliche Health-Felder aus Crawl-, Analyse- und Policy-Daten.
 
 Bei `manual` oder `force` kann `Python: Plan Dispatch` die Intervallpruefung ueberschreiben, sollte aber harte Limits wie `Retry-After` weiterhin respektieren, sofern nicht explizit anders gewuenscht.
 
@@ -252,6 +254,38 @@ Der Step setzt:
   "consecutive_error_count": 0
 }
 ```
+
+## `Python: Derive Source Health`
+
+Nach dem Crawl-Abschluss kann ein weiterer Python-Step aus den technischen
+Feldern eine stabile Health-Zusammenfassung bauen. Diese Felder sind fuer infl0
+geeignet, weil sie Nutzerinnen- und Betreiberansichten trennt:
+
+- `source_health_status`: `pending`, `needs_setup`, `healthy`, `quiet`,
+  `degraded`, `failing`, `blocked`, `paused`
+- `source_health_reason`: kurze maschinenlesbare Begruendung
+- `source_health_json`: Detailobjekt fuer infl0/operator UI
+- `operator_attention`: Boolean
+- `operator_attention_reason`: maschinenlesbarer Grund
+
+n8n Native-Python:
+
+```python
+from tkcrawler.steps.derive_source_health import derive_source_health_item
+
+out = []
+for item in _items:
+    out.append({"json": derive_source_health_item(item["json"])})
+return out
+```
+
+Empfohlenes Data-Table-Update:
+
+- `source_health_status = {{$json.source_health_status}}`
+- `source_health_reason = {{$json.source_health_reason}}`
+- `source_health_json = {{$json.source_health_json}}`
+- `operator_attention = {{$json.operator_attention}}`
+- `operator_attention_reason = {{$json.operator_attention_reason}}`
 
 Status-Regeln:
 
