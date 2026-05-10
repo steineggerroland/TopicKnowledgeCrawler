@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 from tkcrawler.steps.analyze_source import analyze_source_item, analyze_source_step
 from tkcrawler.steps.apply_html_analysis import apply_html_analysis_item, apply_html_analysis_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item, build_ingest_body_step
+from tkcrawler.steps.build_source_status_body import build_source_status_body_item, build_source_status_body_step
 from tkcrawler.steps.derive_source_health import derive_source_health_item, derive_source_health_step
 from tkcrawler.steps.filter_candidates import filter_candidate_item, filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_item, fetch_detail_step
@@ -1242,6 +1243,64 @@ def test_derive_source_health_step_returns_envelope():
 
     assert result["ok"] is True
     assert result["items"][0]["source_health_status"] == "healthy"
+
+
+def test_build_source_status_body_includes_health_and_schedule():
+    out = build_source_status_body_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "name": "Example",
+            "type": "rss",
+            "url": "https://example.com/feed",
+            "active": True,
+            "source_status": "ready",
+            "source_health_status": "healthy",
+            "source_health_reason": "recent_success",
+            "source_health_json": json.dumps({"status": "healthy"}),
+            "operator_attention": False,
+            "last_dispatch_reason": "due",
+            "last_crawl_status": "success",
+            "last_crawl_started_at": "2026-05-09T08:16:00Z",
+            "last_crawl_finished_at": "2026-05-09T08:19:00Z",
+            "last_successful_crawl_at": "2026-05-09T08:19:00Z",
+            "next_allowed_crawl_at": "2026-05-09T11:16:00Z",
+            "crawl_total_count": 12,
+            "crawl_candidate_count": 10,
+            "crawl_skipped_count": 7,
+            "crawl_processed_count": 3,
+            "crawl_fetch_error_count": 0,
+            "crawl_unchanged_count": 0,
+            "crawl_llm_failed_count": 0,
+            "consecutive_error_count": 0,
+            "effective_policy": {"crawl_interval_minutes": 180},
+            "detected_policy_json": json.dumps({"http_status": 200, "cache_max_age_seconds": 600}),
+            "detected_policy_checked_at": "2026-05-09T10:20:41Z",
+            "last_crawl_result_json": json.dumps({"total_count": 12}),
+        }
+    )
+
+    body = out["infl0_source_status_body"]
+    assert body["crawlKey"] == "https://example.com/feed"
+    assert body["sourceHealthStatus"] == "healthy"
+    assert body["nextAllowedCrawlAt"] == "2026-05-09T11:16:00Z"
+    assert body["crawlCandidateCount"] == 10
+    assert body["effectivePolicy"] == {"crawl_interval_minutes": 180}
+    assert body["detectedPolicy"]["cache_max_age_seconds"] == 600
+    assert body["lastCrawlResult"] == {"total_count": 12}
+
+
+def test_build_source_status_body_step_returns_envelope():
+    result = build_source_status_body_step(
+        {
+            "item": {
+                "crawl_key": "https://example.com/feed",
+                "source_health_status": "pending",
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["infl0_source_status_body"]["crawlKey"] == "https://example.com/feed"
 
 
 @patch("tkcrawler.infl0_payload.tldextract.extract")

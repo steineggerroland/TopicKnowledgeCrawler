@@ -27,6 +27,21 @@ Die bisherige Datei `summary_history.json` hielt pro Artikel den letzten `conten
 | `last_crawl_status` | String, optional | `running`, `success`, `failed`, `skipped` |
 | `last_crawl_error` | String, optional | Letzter Crawl-Fehler |
 | `last_dispatch_reason` | String, optional | Warum der Dispatcher die Quelle gestartet oder uebersprungen hat |
+| `crawl_total_count` | Number, optional | Gesamtzahl terminal betrachteter Kandidaten im letzten Lauf |
+| `crawl_candidate_count` | Number, optional | Anzahl gelisteter Kandidaten im letzten Lauf |
+| `crawl_skipped_count` | Number, optional | Kandidaten, die nicht fetched/LLM-verarbeitet wurden |
+| `crawl_fetch_error_count` | Number, optional | Detail-Fetch-Fehler im letzten Lauf |
+| `crawl_unchanged_count` | Number, optional | Bereits bekannte unveraenderte Artikel |
+| `crawl_processed_count` | Number, optional | Erfolgreich verarbeitete/gesendete Artikel |
+| `crawl_llm_failed_count` | Number, optional | LLM-Fehler im letzten Lauf |
+| `consecutive_error_count` | Number, optional | Aufeinanderfolgende fehlerhafte Crawl-Laeufe |
+| `last_successful_crawl_at` | DateTime/String, optional | Letzter voll erfolgreicher Crawl |
+| `last_crawl_result_json` | String, optional | JSON-Zusammenfassung der letzten Counts |
+| `source_health_status` | String, optional | Nutzerinnen-/Operator-Status: `pending`, `needs_setup`, `healthy`, `quiet`, `degraded`, `failing`, `blocked`, `paused` |
+| `source_health_reason` | String, optional | Maschinenlesbarer Health-Grund |
+| `source_health_json` | String, optional | Detailobjekt fuer infl0 Feed-/Operator-UI |
+| `operator_attention` | Boolean, optional | `true`, wenn Betreiber aufmerksam werden sollten |
+| `operator_attention_reason` | String, optional | Maschinenlesbarer Grund fuer Operator-Aufmerksamkeit |
 
 ### `policy_json`
 

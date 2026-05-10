@@ -287,6 +287,61 @@ Empfohlenes Data-Table-Update:
 - `operator_attention = {{$json.operator_attention}}`
 - `operator_attention_reason = {{$json.operator_attention_reason}}`
 
+## `Python: Build infl0 Source Status Body`
+
+Wenn infl0 die Source-Health-/Operator-API bereitstellt, sollte der
+Abschlussflow nach `Derive Source Health` zusaetzlich einen HTTP-Body fuer
+infl0 bauen. Der Step konvertiert die n8n/Data-Table-Felder in camelCase und
+parst JSON-Strings wie `effective_policy`, `detected_policy_json`,
+`source_health_json` und `last_crawl_result_json`.
+
+n8n Native-Python:
+
+```python
+from tkcrawler.steps.build_source_status_body import build_source_status_body_item
+
+out = []
+for item in _items:
+    out.append({"json": build_source_status_body_item(item["json"])})
+return out
+```
+
+Danach HTTP Request:
+
+- Method: `POST`
+- URL: `{{ $vars.INFL0_BASE_URL }}/api/crawler/source-status`
+  oder direkt `https://reader.neurospicy.icu/api/crawler/source-status`
+- Auth: gleicher Bearer/API-Key wie beim Ingest
+- JSON Body: `={{ $json.infl0_source_status_body }}`
+
+Der Body enthaelt unter anderem:
+
+```json
+{
+  "crawlKey": "https://example.com/feed.xml",
+  "sourceHealthStatus": "healthy",
+  "sourceHealthReason": "recent_success",
+  "operatorAttention": false,
+  "lastCrawlStatus": "success",
+  "lastCrawlFinishedAt": "2026-05-09T08:19:00+00:00",
+  "lastSuccessfulCrawlAt": "2026-05-09T08:19:00+00:00",
+  "nextAllowedCrawlAt": "2026-05-09T11:19:00+00:00",
+  "crawlCandidateCount": 10,
+  "crawlSkippedCount": 7,
+  "crawlProcessedCount": 3,
+  "crawlFetchErrorCount": 0,
+  "crawlUnchangedCount": 0,
+  "crawlLlmFailedCount": 0,
+  "consecutiveErrorCount": 0,
+  "effectivePolicy": {"crawl_interval_minutes": 180},
+  "detectedPolicy": {"http_status": 200, "cache_max_age_seconds": 600}
+}
+```
+
+`nextAllowedCrawlAt` ist das zentrale Feld fuer die Nutzerinnenanzeige
+("naechster moeglicher Crawl"). `detectedPolicy` und `operatorAttention*`
+sind vor allem fuer die Betreiberansicht gedacht.
+
 Status-Regeln:
 
 - `success`: keine Fetch- oder LLM-Fehler.
