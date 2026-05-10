@@ -22,22 +22,27 @@ def build_source_status_body_item(row: Mapping[str, Any]) -> dict[str, Any]:
     if not crawl_key:
         raise StepError("missing_crawl_key", "Source status needs crawl_key")
 
-    detected_policy = parse_json_object(
+    detected_policy = _parse_optional_json_object(
         row.get("detected_policy_json", row.get("detected_policy")),
         field="detected_policy_json",
     )
-    effective_policy = parse_json_object(
+    effective_policy = _parse_optional_json_object(
         row.get("effective_policy", row.get("effective_policy_json")),
         field="effective_policy",
     )
-    source_health = parse_json_object(
+    source_health = _parse_optional_json_object(
         row.get("source_health_json", row.get("source_health")),
         field="source_health_json",
     )
-    crawl_result = parse_json_object(
+    crawl_result = _parse_optional_json_object(
         row.get("last_crawl_result_json", row.get("last_crawl_result")),
         field="last_crawl_result_json",
     )
+    source_health_status = _optional_str(row.get("source_health_status"))
+    source_health_reason = _optional_str(row.get("source_health_reason"))
+    if _looks_never_crawled(row, crawl_result):
+        source_health_status = source_health_status or "pending"
+        source_health_reason = source_health_reason or "never_crawled"
 
     body: dict[str, Any] = {
         "crawlKey": str(crawl_key),
@@ -47,8 +52,8 @@ def build_source_status_body_item(row: Mapping[str, Any]) -> dict[str, Any]:
         "active": _optional_bool(row.get("active")),
         "sourceStatus": _optional_str(row.get("source_status")),
         "configurationStatus": _optional_str(row.get("configuration_status")),
-        "sourceHealthStatus": _optional_str(row.get("source_health_status")),
-        "sourceHealthReason": _optional_str(row.get("source_health_reason")),
+        "sourceHealthStatus": source_health_status,
+        "sourceHealthReason": source_health_reason,
         "sourceHealth": source_health or None,
         "operatorAttention": _optional_bool(row.get("operator_attention")),
         "operatorAttentionReason": _optional_str(row.get("operator_attention_reason")),
@@ -83,6 +88,26 @@ def _optional_str(value: Any) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _parse_optional_json_object(value: Any, *, field: str) -> dict[str, Any]:
+    try:
+        return parse_json_object(value, field=field)
+    except StepError:
+        return {}
+
+
+def _looks_never_crawled(row: Mapping[str, Any], crawl_result: Mapping[str, Any]) -> bool:
+    return not any(
+        _optional_str(row.get(field))
+        for field in (
+            "last_crawl_status",
+            "last_crawl_started_at",
+            "last_crawl_finished_at",
+            "last_successful_crawl_at",
+            "last_crawl_error",
+        )
+    ) and not crawl_result
 
 
 def _optional_bool(value: Any) -> bool | None:

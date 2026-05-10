@@ -1303,6 +1303,38 @@ def test_build_source_status_body_step_returns_envelope():
     assert result["items"][0]["infl0_source_status_body"]["crawlKey"] == "https://example.com/feed"
 
 
+def test_build_source_status_body_ignores_invalid_diagnostic_json():
+    out = build_source_status_body_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "last_crawl_result_json": "not-json",
+            "detected_policy_json": "[1, 2]",
+        }
+    )
+
+    body = out["infl0_source_status_body"]
+    assert body["crawlKey"] == "https://example.com/feed"
+    assert body["sourceHealthStatus"] == "pending"
+    assert body["sourceHealthReason"] == "never_crawled"
+    assert body["lastCrawlResult"] is None
+    assert body["detectedPolicy"] is None
+
+
+def test_build_source_status_body_keeps_explicit_health_when_never_crawled():
+    out = build_source_status_body_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_health_status": "needs_setup",
+            "source_health_reason": "needs_analysis",
+            "last_crawl_result_json": "not-json",
+        }
+    )
+
+    body = out["infl0_source_status_body"]
+    assert body["sourceHealthStatus"] == "needs_setup"
+    assert body["sourceHealthReason"] == "needs_analysis"
+
+
 @patch("tkcrawler.infl0_payload.tldextract.extract")
 def test_finalize_item_sets_metadata(mock_extract):
     mock_extract.return_value.registered_domain = "example.com"
