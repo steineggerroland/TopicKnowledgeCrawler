@@ -1,0 +1,71 @@
+{
+  "crawlKey": "https://example.com/feed.xml",
+  "name": "Example Feed",
+  "type": "rss",
+  "url": "https://example.com/feed.xml",
+  "active": true,
+  "sourceStatus": "ready",
+  "configurationStatus": null,
+  "sourceHealthStatus": "paused",
+  "sourceHealthReason": "retry_after_active",
+  "sourceHealth": {
+    "status": "paused",
+    "reason": "retry_after_active",
+    "operator_attention": false,
+    "operator_attention_reason": null,
+    "crawl": {
+      "last_status": "success",
+      "candidate_count": 12,
+      "skipped_count": 7,
+      "processed_count": 3,
+      "unchanged_count": 2,
+      "fetch_error_count": 0,
+      "llm_failed_count": 0,
+      "consecutive_error_count": 0
+    },
+    "policy": {
+      "next_allowed_crawl_at": "2026-05-10T15:20:00+00:00",
+      "detected": {
+        "http_status": 200,
+        "retry_after_seconds": 1800
+      }
+    }
+  },
+  "operatorAttention": false,
+  "operatorAttentionReason": null,
+  "lastDispatchReason": "retry_after_active",
+  "lastCrawlStatus": "success",
+  "lastCrawlStartedAt": "2026-05-10T10:15:00+00:00",
+  "lastCrawlFinishedAt": "2026-05-10T10:20:00+00:00",
+  "lastSuccessfulCrawlAt": "2026-05-10T10:20:00+00:00",
+  "lastCrawlError": null,
+  "nextAllowedCrawlAt": "2026-05-10T15:20:00+00:00",
+  "crawlTotalCount": 12,
+  "crawlCandidateCount": 12,
+  "crawlSkippedCount": 7,
+  "crawlProcessedCount": 3,
+  "crawlFetchErrorCount": 0,
+  "crawlUnchangedCount": 2,
+  "crawlLlmFailedCount": 0,
+  "consecutiveErrorCount": 0,
+  "lastCrawlResult": {
+    "total_count": 12,
+    "candidate_count": 12,
+    "skipped_count": 7,
+    "processed_count": 3,
+    "fetch_error_count": 0,
+    "unchanged_count": 2,
+    "llm_failed_count": 0
+  },
+  "effectivePolicy": {
+    "crawl_interval_minutes": 300,
+    "refresh_window_days": 7,
+    "max_llm_items_per_run": 3
+  },
+  "detectedPolicy": {
+    "http_status": 200,
+    "retry_after_seconds": 1800
+  },
+  "detectedPolicyCheckedAt": "2026-05-10T10:14:30+00:00",
+  "detectedPolicyError": null
+}

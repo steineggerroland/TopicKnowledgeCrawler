@@ -616,6 +616,65 @@ def test_list_candidates_podcast_uses_feed_description(mock_parse):
 
 
 @patch("tkcrawler.steps.list_candidates.feedparser.parse")
+def test_list_candidates_podcast_extracts_episode_metadata(mock_parse):
+    mock_parse.return_value.entries = [
+        {
+            "title": "Episode 42",
+            "link": "https://example.com/e42",
+            "description": "<p>Shownotes</p>",
+            "itunes_duration": "01:02:03",
+            "itunes_episode": "42",
+            "itunes_season": "3",
+            "itunes_episodetype": "full",
+            "itunes_explicit": "no",
+            "itunes_subtitle": "A deep dive",
+            "itunes_image": {"href": "https://example.com/cover.jpg"},
+            "enclosures": [
+                {
+                    "href": "https://cdn.example.com/e42.mp3",
+                    "type": "audio/mpeg",
+                    "length": "123456",
+                }
+            ],
+            "podcast_chapters": [
+                {
+                    "href": "https://example.com/e42.chapters.json",
+                    "type": "application/json+chapters",
+                }
+            ],
+            "podcast_transcript": [
+                {
+                    "href": "https://example.com/e42.txt",
+                    "type": "text/plain",
+                }
+            ],
+        }
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/podcast",
+            "type": "rss+podcast",
+            "url": "https://example.com/podcast",
+        }
+    )
+
+    candidate = out[0]["candidate"]
+    assert candidate["item_kind"] == "episode"
+    assert candidate["media_url"] == "https://cdn.example.com/e42.mp3"
+    assert candidate["media_type"] == "audio/mpeg"
+    assert candidate["media_length_bytes"] == 123456
+    assert candidate["duration_seconds"] == 3723
+    assert candidate["episode_number"] == 42
+    assert candidate["season_number"] == 3
+    assert candidate["episode_type"] == "full"
+    assert candidate["subtitle"] == "A deep dive"
+    assert candidate["image_url"] == "https://example.com/cover.jpg"
+    assert candidate["chapters_url"] == "https://example.com/e42.chapters.json"
+    assert candidate["transcript_url"] == "https://example.com/e42.txt"
+
+
+@patch("tkcrawler.steps.list_candidates.feedparser.parse")
 def test_list_candidates_step_returns_envelope(mock_parse):
     mock_parse.return_value.entries = [
         Mock(title="Article 1", link="https://example.com/1", summary="Summary 1"),
@@ -1029,12 +1088,132 @@ def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
                 "feed_content": "<p>Shownotes</p>",
                 "item_kind": "episode",
                 "categories": ["architecture"],
+                "media_url": "https://cdn.example.com/e1.mp3",
+                "media_type": "audio/mpeg",
+                "media_length_bytes": 1234,
+                "duration_seconds": 1800,
+                "episode_number": 1,
+                "season_number": 2,
+                "episode_type": "full",
+                "subtitle": "Episode subtitle",
+                "image_url": "https://example.com/cover.jpg",
+                "chapters_url": "https://example.com/chapters.json",
+                "chapters_type": "application/json+chapters",
             },
         }
     )
 
     assert out["article"]["content_md"] == "# Episode\n\nShownotes"
     assert out["article"]["categories"] == ["architecture"]
+    assert out["article"]["item_kind"] == "episode"
+    assert out["article"]["shownotes_md"] == "Shownotes"
+    assert out["article"]["media_url"] == "https://cdn.example.com/e1.mp3"
+    assert out["article"]["duration_seconds"] == 1800
+    assert out["article"]["episode_number"] == 1
+    assert out["article"]["season_number"] == 2
+    assert out["article"]["chapters_url"] == "https://example.com/chapters.json"
+
+
+@patch("tkcrawler.steps.fetch_detail.requests.get")
+@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Shownotes")
+def test_fetch_detail_podcast_fetches_chapters(mock_markdown, mock_get):
+    response = Mock()
+    response.json.return_value = {
+        "version": "1.2.0",
+        "chapters": [
+            {
+                "startTime": 0,
+                "title": "Intro",
+                "url": "https://example.com/intro",
+                "img": "https://example.com/intro.jpg",
+            },
+            {"startTime": "00:05:12", "title": "Main Topic"},
+        ],
+    }
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "<p>Summary</p>",
+                "has_feed_content": True,
+                "feed_content": "<p>Shownotes</p>",
+                "item_kind": "episode",
+                "chapters_url": "https://example.com/chapters.json",
+            },
+        },
+        {"verify": "/etc/ssl/certs/ca-certificates.crt"},
+    )
+
+    mock_get.assert_called_once_with(
+        "https://example.com/chapters.json",
+        timeout=20,
+        verify="/etc/ssl/certs/ca-certificates.crt",
+        headers={},
+    )
+    assert out["article"]["chapters"] == [
+        {
+            "start_seconds": 0,
+            "title": "Intro",
+            "url": "https://example.com/intro",
+            "image_url": "https://example.com/intro.jpg",
+        },
+        {"start_seconds": 312, "title": "Main Topic"},
+    ]
+
+
+@patch("tkcrawler.steps.fetch_detail.requests.get")
+@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Summary only")
+def test_fetch_detail_podcast_keeps_chapter_fetch_error(mock_markdown, mock_get):
+    mock_get.side_effect = RuntimeError("chapters unavailable")
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "Summary",
+                "has_feed_content": False,
+                "item_kind": "episode",
+                "chapters_url": "https://example.com/chapters.json",
+            },
+        }
+    )
+
+    assert out["article"]["content_md"] == "# Episode\n\nSummary only"
+    assert out["article"]["shownotes_md"] == "Summary only"
+    assert "chapters unavailable" in out["article"]["chapters_fetch_error"]
+
+
+@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Detail\n\nBody")
+def test_fetch_detail_podcast_uses_detail_page_when_no_feed_summary(mock_markdown):
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "",
+                "has_feed_content": False,
+                "item_kind": "episode",
+            },
+        }
+    )
+
+    mock_markdown.assert_called_once_with("https://example.com/e1", verify=True, headers={})
+    assert out["article"]["content_md"] == "# Detail\n\nBody"
+    assert "shownotes_md" not in out["article"]
 
 
 def test_fetch_detail_rejects_skipped_candidate():
@@ -1214,6 +1393,22 @@ def test_derive_source_health_marks_blocked_from_detected_policy():
     assert out["operator_attention"] is True
 
 
+def test_derive_source_health_ignores_invalid_detected_policy_json():
+    out = derive_source_health_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_status": "ready",
+            "last_crawl_status": "success",
+            "crawl_candidate_count": 1,
+            "detected_policy_json": "not-json",
+        }
+    )
+
+    assert out["source_health_status"] == "healthy"
+    assert out["source_health_reason"] == "recent_success"
+    assert json.loads(out["source_health_json"])["policy"]["detected"] == {}
+
+
 def test_derive_source_health_marks_quiet_no_candidates():
     out = derive_source_health_item(
         {
@@ -1287,6 +1482,26 @@ def test_build_source_status_body_includes_health_and_schedule():
     assert body["effectivePolicy"] == {"crawl_interval_minutes": 180}
     assert body["detectedPolicy"]["cache_max_age_seconds"] == 600
     assert body["lastCrawlResult"] == {"total_count": 12}
+
+
+def test_build_source_status_body_uses_documented_schema_fields():
+    schema_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "docs",
+        "schemas",
+        "source-status.schema.json",
+    )
+    with open(schema_path, encoding="utf-8") as schema_file:
+        schema = json.load(schema_file)
+
+    out = build_source_status_body_item(
+        {
+            "crawl_key": "https://example.com/feed",
+            "source_health_status": "pending",
+        }
+    )
+
+    assert set(out["infl0_source_status_body"]) == set(schema["properties"])
 
 
 def test_build_source_status_body_step_returns_envelope():

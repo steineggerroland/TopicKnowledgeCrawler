@@ -1,0 +1,65 @@
+{
+  "crawlKey": "https://example.com/articles",
+  "name": "Example HTML Articles",
+  "type": "html",
+  "url": "https://example.com/articles",
+  "active": true,
+  "sourceStatus": "needs_analysis",
+  "configurationStatus": "missing",
+  "sourceHealthStatus": "needs_setup",
+  "sourceHealthReason": "needs_analysis",
+  "sourceHealth": {
+    "status": "needs_setup",
+    "reason": "needs_analysis",
+    "operator_attention": false,
+    "operator_attention_reason": null,
+    "crawl": {
+      "last_status": null,
+      "candidate_count": 0,
+      "skipped_count": 0,
+      "processed_count": 0,
+      "unchanged_count": 0,
+      "fetch_error_count": 0,
+      "llm_failed_count": 0,
+      "consecutive_error_count": 0
+    },
+    "policy": {
+      "next_allowed_crawl_at": null,
+      "detected": {
+        "http_status": 200
+      }
+    }
+  },
+  "operatorAttention": false,
+  "operatorAttentionReason": null,
+  "detectedContentType": "text/html; charset=UTF-8",
+  "analysisCheckedAt": "2026-05-10T10:00:00+00:00",
+  "analysisError": null,
+  "configurationError": "HTML configuration missing",
+  "lastDispatchReason": "html_configuration_invalid",
+  "lastCrawlStatus": null,
+  "lastCrawlStartedAt": null,
+  "lastCrawlFinishedAt": null,
+  "lastSuccessfulCrawlAt": null,
+  "lastCrawlError": null,
+  "nextAllowedCrawlAt": null,
+  "crawlTotalCount": null,
+  "crawlCandidateCount": null,
+  "crawlSkippedCount": null,
+  "crawlProcessedCount": null,
+  "crawlFetchErrorCount": null,
+  "crawlUnchangedCount": null,
+  "crawlLlmFailedCount": null,
+  "consecutiveErrorCount": null,
+  "lastCrawlResult": null,
+  "effectivePolicy": {
+    "crawl_interval_minutes": 180,
+    "refresh_window_days": 7,
+    "max_llm_items_per_run": 3
+  },
+  "detectedPolicy": {
+    "http_status": 200
+  },
+  "detectedPolicyCheckedAt": "2026-05-10T10:00:00+00:00",
+  "detectedPolicyError": null
+}

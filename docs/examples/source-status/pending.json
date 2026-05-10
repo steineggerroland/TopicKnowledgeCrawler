@@ -1,0 +1,57 @@
+{
+  "crawlKey": "https://example.com/feed.xml",
+  "name": "Example Feed",
+  "type": "rss",
+  "url": "https://example.com/feed.xml",
+  "active": true,
+  "sourceStatus": "ready",
+  "configurationStatus": null,
+  "sourceHealthStatus": "pending",
+  "sourceHealthReason": "never_crawled",
+  "sourceHealth": {
+    "status": "pending",
+    "reason": "never_crawled",
+    "operator_attention": false,
+    "operator_attention_reason": null,
+    "crawl": {
+      "last_status": null,
+      "candidate_count": 0,
+      "skipped_count": 0,
+      "processed_count": 0,
+      "unchanged_count": 0,
+      "fetch_error_count": 0,
+      "llm_failed_count": 0,
+      "consecutive_error_count": 0
+    },
+    "policy": {
+      "next_allowed_crawl_at": null,
+      "detected": {}
+    }
+  },
+  "operatorAttention": false,
+  "operatorAttentionReason": null,
+  "lastDispatchReason": null,
+  "lastCrawlStatus": null,
+  "lastCrawlStartedAt": null,
+  "lastCrawlFinishedAt": null,
+  "lastSuccessfulCrawlAt": null,
+  "lastCrawlError": null,
+  "nextAllowedCrawlAt": "2026-05-10T15:00:00+00:00",
+  "crawlTotalCount": null,
+  "crawlCandidateCount": null,
+  "crawlSkippedCount": null,
+  "crawlProcessedCount": null,
+  "crawlFetchErrorCount": null,
+  "crawlUnchangedCount": null,
+  "crawlLlmFailedCount": null,
+  "consecutiveErrorCount": null,
+  "lastCrawlResult": null,
+  "effectivePolicy": {
+    "crawl_interval_minutes": 180,
+    "refresh_window_days": 7,
+    "max_llm_items_per_run": 3
+  },
+  "detectedPolicy": null,
+  "detectedPolicyCheckedAt": null,
+  "detectedPolicyError": null
+}

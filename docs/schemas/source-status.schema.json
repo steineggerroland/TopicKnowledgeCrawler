@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://topic-knowledge-crawler.local/schemas/source-status.schema.json",
+  "title": "infl0 crawler source status",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "crawlKey",
+    "sourceHealthStatus"
+  ],
+  "properties": {
+    "crawlKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "active": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "sourceStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "configurationStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceHealthStatus": {
+      "enum": [
+        "pending",
+        "needs_setup",
+        "healthy",
+        "quiet",
+        "degraded",
+        "failing",
+        "blocked",
+        "paused"
+      ]
+    },
+    "sourceHealthReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "sourceHealth": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "operatorAttention": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "operatorAttentionReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "detectedContentType": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "analysisCheckedAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "analysisError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "configurationError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastDispatchReason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastCrawlStatus": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "lastCrawlStartedAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "lastCrawlFinishedAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "lastSuccessfulCrawlAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "lastCrawlError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "nextAllowedCrawlAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "crawlTotalCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlCandidateCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlSkippedCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlProcessedCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlFetchErrorCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlUnchangedCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "crawlLlmFailedCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "consecutiveErrorCount": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "lastCrawlResult": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "effectivePolicy": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "detectedPolicy": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "detectedPolicyCheckedAt": {
+      "$ref": "#/$defs/nullableIsoDateTime"
+    },
+    "detectedPolicyError": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "nullableIsoDateTime": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableNonNegativeInteger": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

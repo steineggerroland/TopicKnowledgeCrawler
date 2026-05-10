@@ -3,11 +3,11 @@ from __future__ import annotations
 import json
 from typing import Any, Mapping
 
-from tkcrawler.steps._runtime import ok, parse_json_object, split_input
+from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 
 def derive_source_health_item(row: Mapping[str, Any]) -> dict[str, Any]:
-    detected = parse_json_object(row.get("detected_policy_json", row.get("detected_policy")), field="detected_policy_json")
+    detected = _parse_optional_json_object(row.get("detected_policy_json", row.get("detected_policy")), field="detected_policy_json")
     status, reason = _health(row, detected)
     attention, attention_reason = _operator_attention(row, detected, status, reason)
     health = {
@@ -106,6 +106,13 @@ def _int(value: Any) -> int:
         return max(int(value or 0), 0)
     except (TypeError, ValueError):
         return 0
+
+
+def _parse_optional_json_object(value: Any, *, field: str) -> dict[str, Any]:
+    try:
+        return parse_json_object(value, field=field)
+    except StepError:
+        return {}
 
 
 def derive_source_health_step(payload: Mapping[str, Any]) -> dict[str, Any]:
