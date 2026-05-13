@@ -1,0 +1,26 @@
+{
+  "crawlKey": "https://example.com/feed.xml",
+  "id": "article-01hxyz",
+  "item_kind": "article",
+  "title": "Designing Useful Boundaries",
+  "link": "https://example.com/articles/designing-useful-boundaries",
+  "summary": "A short source-provided summary of the article.",
+  "author": "Ada Example",
+  "publishedAt": "2026-05-10T08:00:00+00:00",
+  "updatedAt": "2026-05-10T09:15:00+00:00",
+  "content_md": "# Designing Useful Boundaries\n\nLong-form article content in Markdown.",
+  "source_type": "rss",
+  "tld": "example.com",
+  "content_hash": "8cf0d7a18f1d4b6fb4d6f4bcb1fdbf3d",
+  "teaser": "Good boundaries make systems easier to change.",
+  "summary_long": "The article explains how clear boundaries reduce coupling and make software systems easier to understand, test and evolve.",
+  "category": [
+    "expert opinions"
+  ],
+  "tags": [
+    "software architecture",
+    "modularity",
+    "design"
+  ],
+  "seriousness_rating": "medium"
+}

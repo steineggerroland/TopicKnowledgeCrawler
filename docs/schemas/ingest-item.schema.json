@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://topic-knowledge-crawler.local/schemas/ingest-item.schema.json",
+  "title": "infl0 crawler ingest item",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "crawlKey",
+    "id",
+    "title",
+    "link",
+    "item_kind"
+  ],
+  "properties": {
+    "crawlKey": {
+      "type": "string",
+      "minLength": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "item_kind": {
+      "enum": [
+        "article",
+        "episode"
+      ]
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "link": {
+      "type": "string",
+      "minLength": 1
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "author": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "publishedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "updatedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "content_md": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "source_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "tld": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "content_hash": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "teaser": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summary_long": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "category": {
+      "$ref": "#/$defs/nullableStringArray"
+    },
+    "tags": {
+      "$ref": "#/$defs/nullableStringArray"
+    },
+    "seriousness_rating": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "categories": {
+      "$ref": "#/$defs/nullableStringArray"
+    },
+    "media_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "media_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "media_length_bytes": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "duration_seconds": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "episode_number": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "season_number": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
+    },
+    "episode_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "explicit": {
+      "type": [
+        "string",
+        "boolean",
+        "null"
+      ]
+    },
+    "subtitle": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "image_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "shownotes_md": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "chapters_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "chapters_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "chapters": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/chapter"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "chapters_fetch_error": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transcript_url": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transcript_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "$defs": {
+    "nullableStringArray": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableNonNegativeInteger": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "chapter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_seconds",
+        "title"
+      ],
+      "properties": {
+        "start_seconds": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string"
+        },
+        "image_url": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

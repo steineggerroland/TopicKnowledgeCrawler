@@ -1,0 +1,64 @@
+{
+  "crawlKey": "https://example.com/podcast/feed.xml",
+  "id": "episode-01hxyz",
+  "item_kind": "episode",
+  "title": "Episode 42: Bounded Contexts in Practice",
+  "link": "https://example.com/podcast/42-bounded-contexts",
+  "summary": "<p>The hosts discuss practical modelling decisions in larger systems.</p>",
+  "author": "Example Podcast",
+  "publishedAt": "2026-05-10T08:00:00+00:00",
+  "updatedAt": null,
+  "content_md": "# Episode 42: Bounded Contexts in Practice\n\nThe hosts discuss practical modelling decisions in larger systems.",
+  "source_type": "rss+podcast",
+  "tld": "example.com",
+  "content_hash": "de7f5c0f49f04926bde18ef3d4d66f63",
+  "teaser": "A practical conversation about finding useful boundaries in complex domains.",
+  "summary_long": "This episode explains how teams can discover bounded contexts, notice model conflicts and decide where integration boundaries should live.",
+  "category": [
+    "expert opinions",
+    "debates and discussions"
+  ],
+  "tags": [
+    "domain-driven design",
+    "bounded contexts",
+    "software architecture"
+  ],
+  "seriousness_rating": "medium",
+  "categories": [
+    "architecture",
+    "ddd"
+  ],
+  "media_url": "https://cdn.example.com/podcast/episode-42.mp3",
+  "media_type": "audio/mpeg",
+  "media_length_bytes": 42133776,
+  "duration_seconds": 3723,
+  "episode_number": 42,
+  "season_number": 3,
+  "episode_type": "full",
+  "explicit": "no",
+  "subtitle": "A practical look at bounded contexts",
+  "image_url": "https://example.com/podcast/episode-42.jpg",
+  "shownotes_md": "The hosts discuss practical modelling decisions in larger systems.\n\nLinks mentioned in the show:\n\n- https://example.com/ddd",
+  "chapters_url": "https://example.com/podcast/episode-42.chapters.json",
+  "chapters_type": "application/json+chapters",
+  "chapters": [
+    {
+      "start_seconds": 0,
+      "title": "Intro",
+      "url": "https://example.com/podcast/42-bounded-contexts#intro",
+      "image_url": "https://example.com/podcast/episode-42-intro.jpg"
+    },
+    {
+      "start_seconds": 312,
+      "title": "Finding context boundaries"
+    },
+    {
+      "start_seconds": 1810,
+      "title": "Integration trade-offs",
+      "url": "https://example.com/podcast/42-bounded-contexts#integration"
+    }
+  ],
+  "chapters_fetch_error": null,
+  "transcript_url": "https://example.com/podcast/episode-42.transcript.txt",
+  "transcript_type": "text/plain"
+}
