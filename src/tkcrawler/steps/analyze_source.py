@@ -55,7 +55,7 @@ def analyze_source_item(row: Mapping[str, Any], context: Mapping[str, Any] | Non
         out["source_status"] = SourceStatus.READY if _has_html_configuration(row) else SourceStatus.NEEDS_ANALYSIS
         out["configuration_status"] = row.get("configuration_status") or (ConfigurationStatus.VALID if _has_html_configuration(row) else ConfigurationStatus.MISSING)
     else:
-        out["source_status"] = "analysis_failed"
+        out["source_status"] = SourceStatus.ANALYSIS_FAILED
         out["analysis_error"] = f"Unknown content type: {content_type or 'not provided'}"
 
     return out
