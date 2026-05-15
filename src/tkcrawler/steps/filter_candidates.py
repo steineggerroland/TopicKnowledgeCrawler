@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
-from typing import Any, Mapping
+from typing import Any
 
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 

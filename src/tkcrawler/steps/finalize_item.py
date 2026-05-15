@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from tkcrawler.infl0_payload import finalize_entry_metadata
 from tkcrawler.steps._runtime import StepError, ok, split_input

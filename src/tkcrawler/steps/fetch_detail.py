@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 import requests
 
@@ -8,7 +9,6 @@ from tkcrawler import text
 from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
-
 
 EPISODE_FIELDS = (
     "media_url",

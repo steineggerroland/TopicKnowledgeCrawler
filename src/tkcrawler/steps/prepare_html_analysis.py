@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any
 
 import requests
 from bs4 import BeautifulSoup
 
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
-
 
 DEFAULT_MAX_HTML_CHARS = 30000
 

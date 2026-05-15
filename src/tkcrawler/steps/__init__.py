@@ -5,8 +5,8 @@ from tkcrawler.steps.apply_html_analysis import apply_html_analysis_step
 from tkcrawler.steps.build_ingest_body import build_ingest_body_step
 from tkcrawler.steps.build_source_status_body import build_source_status_body_step
 from tkcrawler.steps.derive_source_health import derive_source_health_step
-from tkcrawler.steps.filter_candidates import filter_candidates_step
 from tkcrawler.steps.fetch_detail import fetch_detail_step
+from tkcrawler.steps.filter_candidates import filter_candidates_step
 from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_step
 from tkcrawler.steps.finalize_item import finalize_item_step
 from tkcrawler.steps.inspect_source_policy import inspect_source_policy_step
@@ -15,7 +15,9 @@ from tkcrawler.steps.list_candidates import list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_step
 from tkcrawler.steps.prepare_html_analysis import prepare_html_analysis_step
-from tkcrawler.steps.validate_source_configuration import validate_source_configuration_step
+from tkcrawler.steps.validate_source_configuration import (
+    validate_source_configuration_step,
+)
 
 STEP_REGISTRY = {
     "analyze_source": analyze_source_step,

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
-
 
 COUNT_FIELDS = {
     "crawlTotalCount": "crawl_total_count",

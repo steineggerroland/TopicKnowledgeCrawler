@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 EXAMPLE_DIR = Path(__file__).parents[2] / "docs" / "examples" / "ingest"
 SCHEMA_PATH = Path(__file__).parents[2] / "docs" / "schemas" / "ingest-item.schema.json"
 COMMON_FIELDS = {
@@ -57,7 +56,7 @@ def test_ingest_examples_are_documented_item_kinds():
     assert article["item_kind"] == "article"
     assert episode["item_kind"] == "episode"
     assert set(article) <= COMMON_FIELDS
-    assert EPISODE_FIELDS <= set(episode)
+    assert set(episode) >= EPISODE_FIELDS
     assert episode["media_url"]
     assert episode["duration_seconds"] > 0
     assert episode["chapters"][0]["start_seconds"] == 0

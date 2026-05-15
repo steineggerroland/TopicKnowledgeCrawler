@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any
 
 from tkcrawler.steps._runtime import StepError, ok, split_input
 from tkcrawler.steps.list_candidates import list_candidates_items

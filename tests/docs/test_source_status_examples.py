@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 EXAMPLE_DIR = Path(__file__).parents[2] / "docs" / "examples" / "source-status"
 SCHEMA_PATH = Path(__file__).parents[2] / "docs" / "schemas" / "source-status.schema.json"
 HEALTH_STATUSES = {
