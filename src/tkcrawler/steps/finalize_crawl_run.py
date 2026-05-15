@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any
 
 from tkcrawler.steps._runtime import StepError, ok, split_input
-
 
 COUNT_FIELDS = {
     "candidate_count": ("candidateCount", "candidate_count", "candidates"),

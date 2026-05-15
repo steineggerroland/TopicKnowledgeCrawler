@@ -24,3 +24,28 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+src = ["src", "tests"]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # pyflakes
+  "I",     # isort
+  "UP",    # pyupgrade
+  "B",     # flake8-bugbear
+  "SIM",   # flake8-simplify
+  "LOG",   # flake8-logging
+  "G",     # flake8-logging-format
+]
+ignore = [
+  "E501",  # line too long – handled by formatter if enabled later
+  "SIM108", # ternary operator – readability preference
+  "SIM102", # nested if – sometimes clearer than combined condition
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["tkcrawler"]

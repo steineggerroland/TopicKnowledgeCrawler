@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 
 def request_headers(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, str]:

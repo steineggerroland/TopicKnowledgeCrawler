@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any
 
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item
 from tkcrawler.steps.fetch_detail import fetch_detail_item
