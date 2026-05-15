@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any
 
+from tkcrawler.enums import ConfigurationStatus, SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
 
@@ -19,18 +20,18 @@ def apply_html_analysis_item(row: Mapping[str, Any], context: Mapping[str, Any] 
     except StepError as exc:
         return {
             **dict(row),
-            "source_status": "configuration_invalid",
-            "configuration_status": "invalid",
+            "source_status": SourceStatus.CONFIGURATION_INVALID,
+            "configuration_status": ConfigurationStatus.INVALID,
             "configuration_error": exc.message,
             "configuration_checked_at": now,
         }
 
     return {
         **dict(row),
-        "type": "html",
-        "source_status": "needs_validation",
+        "type": SourceType.HTML,
+        "source_status": SourceStatus.NEEDS_VALIDATION,
         "configuration_json": json.dumps(configuration, ensure_ascii=False),
-        "configuration_status": "generated",
+        "configuration_status": ConfigurationStatus.GENERATED,
         "configuration_error": None,
         "configuration_checked_at": now,
         "html_analysis_confidence": analysis.get("confidence"),

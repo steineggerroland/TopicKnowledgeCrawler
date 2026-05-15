@@ -10,6 +10,7 @@ from typing import Any
 import feedparser
 import requests
 
+from tkcrawler.enums import SourceType
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
@@ -138,7 +139,7 @@ def _retry_after_seconds(value: str, now: str) -> int | None:
 
 
 def _looks_like_feed(source_type: str, content_type: str, body: str) -> bool:
-    if source_type in {"rss", "rss+podcast"}:
+    if source_type in {SourceType.RSS, SourceType.PODCAST}:
         return True
     lowered = content_type.lower()
     if any(marker in lowered for marker in ("rss", "atom", "xml")):

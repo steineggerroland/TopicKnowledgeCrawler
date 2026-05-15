@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
 
+from tkcrawler.enums import CandidateDecision
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 DEFAULT_REFRESH_WINDOW_DAYS = 7
@@ -81,15 +82,15 @@ def filter_candidate_item(row: Mapping[str, Any], context: Mapping[str, Any] | N
         or _parse_dt(candidate.get("publishedAt"))
     )
 
-    decision = "fetch"
+    decision = CandidateDecision.FETCH
     reason = "new_candidate"
 
     if history_exists:
         if candidate_dt and candidate_dt < refresh_cutoff:
-            decision = "skip_too_old"
+            decision = CandidateDecision.SKIP_TOO_OLD
             reason = "known_candidate_outside_refresh_window"
         else:
-            decision = "fetch"
+            decision = CandidateDecision.FETCH
             reason = "known_candidate_within_refresh_window"
 
     return {

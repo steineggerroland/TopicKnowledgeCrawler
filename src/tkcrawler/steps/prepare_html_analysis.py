@@ -8,6 +8,7 @@ from typing import Any
 import requests
 from bs4 import BeautifulSoup
 
+from tkcrawler.enums import ConfigurationStatus, SourceStatus, SourceType
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
@@ -39,7 +40,7 @@ def prepare_html_analysis_item(
     except Exception as exc:
         return {
             **dict(row),
-            "source_status": "analysis_failed",
+            "source_status": SourceStatus.ANALYSIS_FAILED,
             "analysis_error": str(exc),
             "analysis_checked_at": now,
         }
@@ -47,9 +48,9 @@ def prepare_html_analysis_item(
     compact_html = _compact_html(response.text, max_chars=max_chars)
     return {
         **dict(row),
-        "type": "html",
-        "source_status": "needs_analysis",
-        "configuration_status": "missing",
+        "type": SourceType.HTML,
+        "source_status": SourceStatus.NEEDS_ANALYSIS,
+        "configuration_status": ConfigurationStatus.MISSING,
         "analysis_error": None,
         "analysis_checked_at": now,
         "html_analysis_url": url,

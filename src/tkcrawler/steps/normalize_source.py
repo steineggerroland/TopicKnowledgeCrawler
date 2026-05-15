@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from tkcrawler.crawl_key import normalize_feed_url
+from tkcrawler.enums import SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 
@@ -52,10 +53,10 @@ def normalize_source_item(row: Mapping[str, Any]) -> dict[str, Any]:
 
     source_status = _first_str(row, "source_status")
     if not source_status:
-        if not source_type or source_type == "html" and not configuration:
-            source_status = "needs_analysis"
+        if not source_type or source_type == SourceType.HTML and not configuration:
+            source_status = SourceStatus.NEEDS_ANALYSIS
         else:
-            source_status = "ready"
+            source_status = SourceStatus.READY
     out["source_status"] = source_status
 
     return out

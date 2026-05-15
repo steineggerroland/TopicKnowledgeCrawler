@@ -6,6 +6,7 @@ from typing import Any
 import requests
 
 from tkcrawler import text
+from tkcrawler.enums import CandidateDecision, ItemKind, SourceType
 from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
@@ -135,7 +136,7 @@ def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None 
         raise StepError("missing_candidate", "Item needs candidate object")
 
     decision = row.get("candidate_decision")
-    if decision and decision != "fetch":
+    if decision and decision != CandidateDecision.FETCH:
         raise StepError(
             "candidate_not_fetchable",
             f"Candidate decision is not fetch: {decision}",
@@ -147,12 +148,12 @@ def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None 
         raise StepError("missing_link", "Candidate needs link")
 
     source_type = str(row.get("source_type") or row.get("type") or "").strip()
-    item_kind = str(candidate.get("item_kind") or "article")
+    item_kind = str(candidate.get("item_kind") or ItemKind.ARTICLE)
     verify = context.get("verify", row.get("verify", True))
     headers = request_headers(row, context)
 
     shownotes_md = None
-    if source_type == "rss+podcast":
+    if source_type == SourceType.PODCAST:
         content_md, shownotes_md = _podcast_content(candidate, link, verify=verify, headers=headers)
     elif candidate.get("has_feed_content") and row.get("prefer_feed_content"):
         content_md, _shownotes_md = _markdown_from_feed_content(candidate)
@@ -172,7 +173,7 @@ def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None 
     }
     if candidate.get("categories") is not None:
         article["categories"] = candidate.get("categories")
-    if item_kind == "episode":
+    if item_kind == ItemKind.EPISODE:
         for field in EPISODE_FIELDS:
             if candidate.get(field) is not None:
                 article[field] = candidate.get(field)
