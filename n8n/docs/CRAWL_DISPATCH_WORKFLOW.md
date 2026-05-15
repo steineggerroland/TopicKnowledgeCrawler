@@ -1,399 +1,164 @@
-# Crawl-Dispatch-Workflow
+# Crawl Dispatch Workflow
 
-Diese Notiz bezieht sich auf den n8n-Workflow, der aktive Quellen aus `Infl0-crawl-sources` liest und fuer jede Quelle den eigentlichen Crawl-Workflow `infl0 - Process source, discover articles -> infl0` ausfuehrt.
+This document describes the n8n workflow that reads active sources from `Infl0-crawl-sources` and starts the child crawl workflow for each due source.
 
-## Aktueller Ablauf
+## Responsibility
 
-1. Manual Trigger oder Schedule Trigger alle drei Stunden.
-2. `Merge Triggers`.
-3. `Get row(s)`: liest alle Quellen mit `active = true`, sortiert nach `updatedAt ASC`.
-4. `Execute Workflow`: ruft pro Item den Crawl-Workflow im Modus `each` auf.
+The dispatch workflow decides which sources may run now. The child crawl workflow processes one source.
 
-## Rolle im Gesamtsystem
+Recommended separation:
 
-Dieser Workflow ist der Dispatcher. Er sollte langfristig entscheiden, welche Quellen jetzt wirklich laufen duerfen. Der eigentliche Crawl-Workflow sollte weiterhin eine einzelne Quelle verarbeiten.
+- Source sync workflow: keeps `crawl_sources` current and analyzes sources.
+- Crawl dispatch workflow: selects due sources and starts child crawls.
+- Child crawl workflow: lists candidates, fetches details, enriches and sends items to infl0.
+- Source health workflow or final dispatch step: sends source health to infl0.
 
-Damit ergibt sich diese Arbeitsteilung:
+## Why Dispatch Matters
 
-- Source-Sync-Workflow: haelt `crawl_sources` aktuell und analysiert Quellen.
-- Crawl-Dispatch-Workflow: waehlt faellige Quellen aus und startet einzelne Crawls.
-- Crawl-Workflow: verarbeitet eine Quelle, listet Kandidaten, fetched Details, enriched und sendet an infl0.
+Filtering only on `active = true` is not enough once sources have policies and observed state.
 
-## Problem im aktuellen Ablauf
+The dispatcher should prevent:
 
-Der aktuelle Filter `active = true` reicht nicht mehr, sobald Quellen eigene Crawl-Intervalle, Rate-Limits oder erkannte Source-Hinweise haben.
+- crawling sources before their interval elapsed,
+- retrying sources that returned `Retry-After`,
+- starting sources with invalid HTML configuration,
+- starting already running sources too early,
+- overloading operators with repeated failing runs.
 
-Wenn der Dispatcher alle aktiven Quellen alle drei Stunden startet:
+## Recommended Node Chain
 
-- werden Quellen mit laengeren Intervallen zu oft gecrawlt,
-- werden Quellen mit `Retry-After` oder Rate-Limit trotzdem wieder gestartet,
-- wird `rss ttl` / `skipHours` / `skipDays` nicht respektiert,
-- laufen HTML-Quellen eventuell trotz `configuration_invalid`,
-- blockieren langsame Quellen weiterhin regelmaessig den Workflow.
+1. Manual or Schedule trigger.
+2. Merge triggers.
+3. Data Table `Get rows`: active sources, sorted by `updatedAt ASC`.
+4. Optional `inspect_source_policy` for due or stale policy data.
+5. Python Code node `plan_dispatch`.
+6. Update source row with `last_crawl_status = running`, `last_crawl_started_at`, `next_allowed_crawl_at`, `last_dispatch_reason`.
+7. IF `should_dispatch = true`.
+8. Execute child crawl workflow in `each` mode.
+9. Aggregate child workflow endings.
+10. `finalize_crawl_run`.
+11. Update source row with result counters.
+12. `derive_source_health` and `build_source_status_body`.
+13. `POST /api/crawler/source-status`.
 
-## Zielstruktur
+The child workflow should receive the planned item from the true branch, not the Data Table update output, because update nodes may drop fields such as `dispatch_reason` or `effective_policy`.
 
-Der Dispatcher sollte nur Quellen starten, die faellig und crawlbar sind.
+## Dispatch Step
 
-Minimaler Data-Table-Filter:
-
-- `active = true`
-- `source_status = ready`
-- `next_allowed_crawl_at` ist leer oder `<= now`
-
-Zusaetzlich in n8n oder Python pruefen:
-
-- `type` ist `rss`, `rss+podcast` oder `html`
-- bei `type = html`: `configuration_status = valid`
-- `last_crawl_status` ist nicht `running` oder der Lauf ist als stale erkannt
-- optional: `subscriber_count > 0`
-
-## Empfohlene Node-Kette
-
-1. Manual Trigger, Webhook Trigger oder Schedule Trigger.
-2. `Set Dispatch Context`: setzt `dispatch_mode` (`scheduled`, `manual`, `force`) und `dispatch_started_at`.
-3. `Get row(s)`: grober Filter auf `active = true`.
-4. `Python: Inspect Source Policy`: liest guenstige Source-Hinweise wie
-   RSS `ttl`, HTTP Cache-Header und `Retry-After`.
-5. `Data Table: Update Detected Policy`: speichert die erkannten Hinweise.
-6. `Python: Plan Dispatch`: prueft pro Quelle Policy, Status und Faelligkeit.
-7. `IF should_dispatch`.
-8. `Data Table: Mark Crawl Started`: setzt `last_crawl_started_at`, `last_crawl_status = running`.
-9. `Execute Workflow`: ruft Crawl-Workflow pro Quelle auf.
-10. `Data Table: Mark Crawl Finished`: setzt `last_crawl_finished_at`, `last_crawl_status`, `last_crawl_error`, `next_allowed_crawl_at`.
-11. Optional `Python: Derive Source Health`: berechnet nutzerinnen- und
-    betreiberfreundliche Health-Felder aus Crawl-, Analyse- und Policy-Daten.
-
-Bei `manual` oder `force` kann `Python: Plan Dispatch` die Intervallpruefung ueberschreiben, sollte aber harte Limits wie `Retry-After` weiterhin respektieren, sofern nicht explizit anders gewuenscht.
-
-Wichtig fuer die Verdrahtung: Der Child-Crawl-Workflow sollte das geplante Item aus `Python: Plan Dispatch` bzw. dem True-Branch des IF bekommen, nicht den Output des Data-Table-Update-Nodes. Der Update-Node kann Felder verlieren oder anders formatieren. Wenn `Execute Workflow` hinter dem Update-Node haengt, fehlen im Child leicht Felder wie `dispatch_reason` oder `effective_policy`. Besser:
-
-- IF True -> `Data Table: Mark Crawl Started`
-- IF True -> `Execute Workflow`
-
-oder alternativ nach dem Update die geplanten Felder wieder per Merge/Set aus dem IF-Input herstellen.
-
-## `Python: Inspect Source Policy`
-
-Input: Source-Zeile aus `crawl_sources`.
-
-Output:
-
-```json
-{
-  "crawl_key": "https://example.com/feed.xml",
-  "detected_policy_json": "{\"http_status\":200,\"rss_ttl_minutes\":60,\"etag\":\"...\"}",
-  "detected_policy_checked_at": "2026-05-09T12:00:00+00:00",
-  "detected_policy_error": null
-}
-```
-
-Der Step trifft keine Dispatch-Entscheidung. Er erkennt nur Hinweise:
-
-- HTTP Status
-- `ETag`
-- `Last-Modified`
-- `Cache-Control` und `max-age`
-- `Expires`
-- `Retry-After`
-- RSS/Atom `ttl`
-
-n8n Native-Python:
+n8n Code node:
 
 ```python
 from datetime import datetime, timezone
 
-from tkcrawler.steps.inspect_source_policy import inspect_source_policy_item
+from tkcrawler.steps.plan_dispatch import plan_dispatch_item
 
 now = datetime.now(timezone.utc).isoformat()
-verify = "/etc/ssl/certs/ca-certificates.crt"
-
 out = []
 for item in _items:
-    out.append(
-        {
-            "json": inspect_source_policy_item(
-                item["json"],
-                {"now": now, "verify": verify, "timeout_seconds": 10},
-            )
-        }
+    planned = plan_dispatch_item(
+        item["json"],
+        {"now": now, "dispatch_mode": "scheduled"},
     )
+    out.append({"json": planned})
 return out
 ```
 
-Empfohlenes Data-Table-Update danach:
+Manual force can be implemented by passing `dispatch_mode = "force"` only from an explicit manual-force branch.
 
-- Filter: `crawl_key = {{$json.crawl_key}}`
-- `detected_policy_json = {{$json.detected_policy_json}}`
-- `detected_policy_checked_at = {{$json.detected_policy_checked_at}}`
-- `detected_policy_error = {{$json.detected_policy_error}}`
+## Important Fields
 
-## `Python: Plan Dispatch`
+Input fields:
 
-Input: Source-Zeile aus `crawl_sources`.
+- `active`
+- `source_status`
+- `type`
+- `configuration_status`
+- `policy_json`
+- `detected_policy_json`
+- `next_allowed_crawl_at`
+- `last_crawl_status`
+- `last_crawl_started_at`
 
-Output:
+Output fields:
 
-```json
-{
-  "crawl_key": "https://example.com/feed.xml",
-  "should_dispatch": true,
-  "dispatch_reason": "due",
-  "next_allowed_crawl_at": "2026-05-04T15:00:00+02:00",
-  "effective_policy": {
-    "crawl_interval_minutes": 180,
-    "rate_limit_per_minute": 10,
-    "refresh_window_days": 7
-  }
-}
-```
+- `should_dispatch`
+- `dispatch_reason`
+- `next_allowed_crawl_at`
+- `effective_policy`
 
-Moegliche `dispatch_reason`-Werte:
+Common dispatch reasons:
 
 - `due`
-- `manual_force`
 - `not_due`
 - `inactive`
 - `source_not_ready`
 - `html_configuration_invalid`
-- `cache_fresh`
-- `rate_limited`
-- `retry_after_active`
 - `already_running`
+- `stale_running`
+- `manual_force`
 
-## Intervall-Logik
+## Policy
 
-Die Intervall-Entscheidung sollte aus `effective_policy_json`, `detected_policy_json`, `last_crawl_finished_at` und `next_allowed_crawl_at` entstehen.
+Default policy values should be conservative:
 
-Prioritaet:
+```json
+{
+  "crawl_interval_minutes": 180,
+  "rate_limit_per_minute": 10,
+  "refresh_window_days": 7,
+  "stale_running_minutes": 120,
+  "max_llm_items_per_run": 3
+}
+```
 
-1. Wenn `next_allowed_crawl_at` in der Zukunft liegt: nicht dispatchen.
-2. Wenn ein hartes `Retry-After` aktiv ist: nicht dispatchen.
-3. Wenn erkannte HTTP-Cache-Hinweise (`Expires` oder `Cache-Control: max-age`)
-   noch frisch sind: nicht dispatchen (`cache_fresh`).
-4. Wenn `source_status != ready`: nicht dispatchen.
-5. Wenn HTML-Konfiguration fehlt oder invalid ist: nicht dispatchen.
-6. Wenn `last_crawl_status = running` und nicht stale: nicht dispatchen.
-7. Sonst dispatchen, wenn das effektive Intervall abgelaufen ist.
+Source-level `policy_json` may override defaults. Detected hints from `inspect_source_policy` may influence timing, for example RSS TTL or HTTP cache headers.
 
-`next_allowed_crawl_at` sollte nach jedem Crawl neu berechnet werden:
+## Child Crawl Contract
 
-- erfolgreiche Quelle: `last_crawl_finished_at + crawl_interval_minutes`
-- 429/503 mit `Retry-After`: `now + retry_after`
-- HTTP `Cache-Control: max-age` und RSS `ttl` koennen das effektive
-  `crawl_interval_minutes` konservativ verlaengern.
-- Fehler ohne Retry-After: kurzer Backoff, zum Beispiel 15 bis 60 Minuten
-- manuell gesetzte Policy darf konservativer sein als automatisch erkannte Hinweise
+The child workflow receives a single planned source item. If `should_dispatch = true` is already present, the child should start directly with `list_candidates` and should not run `plan_dispatch` again.
 
-## Auswirkungen auf den Crawl-Workflow
+The child workflow should aggregate ending paths into fields such as:
 
-Der Crawl-Workflow bekommt im Normalfall bereits ein von `Python: Plan Dispatch` geplantes Item. Wenn er vom Dispatcher gestartet wird, sollte er nicht direkt erneut `plan_dispatch` ausfuehren, nachdem `next_allowed_crawl_at` und `last_crawl_status` bereits geschrieben wurden. Sonst kann der Child-Workflow entweder faelschlich `not_due` werden oder, bei erzwungenem Re-Check, `dispatch_reason = manual_force` erzeugen.
-
-Empfohlen:
-
-- Dispatcher filtert und markiert Runs.
-- Child-Crawl-Workflow startet direkt mit `List Candidates`, wenn `should_dispatch = true` bereits vorhanden ist.
-- Fuer direkte manuelle Child-Starts sollte ein separater kleiner Guard genutzt werden, der nur Pflichtfelder validiert (`crawl_key`, `url`, `type`), aber nicht erneut `next_allowed_crawl_at` berechnet.
-
-Diese Trennung verhindert, dass der Dispatcher-Entscheid im Child versehentlich ueberschrieben wird.
-
-## Crawl-Abschluss aus Aggregates
-
-Wenn der Child-Crawl-Workflow seine Endpfade aggregiert, kann ein letzter Python-Step daraus den Source-Update-Payload bauen. Erwartete Aggregate-Felder:
-
-- `candidateCount`
-- `skipped` oder `skippedCandidates`
-- `fetchErrorred` oder `fetchErrored`
+- `fetchErrored`
 - `unchanged`
 - `processed`
 - `llmFailed`
+- `skipped`
+- `candidateCount`
 
-Die Felder duerfen Arrays oder bereits Zahlen sein.
+Then `finalize_crawl_run` computes:
 
-Empfohlene n8n-Verdrahtung:
-
-- Direkt nach `List Candidates` die Kandidaten zaehlen und `candidateCount` bis
-  zum Abschlussflow mitgeben.
-- Kandidaten mit `candidate_decision != fetch` in einen eigenen Abschlusszweig
-  fuehren und als `skipped` aggregieren.
-- Wenn `List Candidates` keine Items erzeugt, trotzdem ein Abschluss-Item mit
-  `crawl_key` und `candidateCount = 0` erzeugen. Sonst hat n8n kein Item mehr,
-  das den Crawl erfolgreich abschliessen kann.
-- Der bisherige `if fetch`-False-Branch sollte daher nicht leer bleiben,
-  sondern in ein skipped/no-fetch Aggregat laufen.
-
-n8n Native-Python:
-
-```python
-from datetime import datetime, timezone
-
-from tkcrawler.steps.finalize_crawl_run import finalize_crawl_run_item
-
-now = datetime.now(timezone.utc).isoformat()
-out = []
-for item in _items:
-    out.append({"json": finalize_crawl_run_item(item["json"], {"now": now})})
-return out
-```
-
-Der Step setzt:
-
-```json
-{
-  "last_crawl_status": "success|partial_failed|failed",
-  "last_crawl_finished_at": "2026-05-08T12:00:00+00:00",
-  "last_crawl_error": null,
-  "crawl_total_count": 12,
-  "crawl_candidate_count": 12,
-  "crawl_skipped_count": 0,
-  "crawl_fetch_error_count": 0,
-  "crawl_unchanged_count": 7,
-  "crawl_processed_count": 5,
-  "crawl_llm_failed_count": 0,
-  "last_crawl_result_json": "{\"total_count\":12,...}",
-  "consecutive_error_count": 0
-}
-```
-
-## `Python: Derive Source Health`
-
-Nach dem Crawl-Abschluss kann ein weiterer Python-Step aus den technischen
-Feldern eine stabile Health-Zusammenfassung bauen. Diese Felder sind fuer infl0
-geeignet, weil sie Nutzerinnen- und Betreiberansichten trennt:
-
-- `source_health_status`: `pending`, `needs_setup`, `healthy`, `quiet`,
-  `degraded`, `failing`, `blocked`, `paused`
-- `source_health_reason`: kurze maschinenlesbare Begruendung
-- `source_health_json`: Detailobjekt fuer infl0/operator UI
-- `operator_attention`: Boolean
-- `operator_attention_reason`: maschinenlesbarer Grund
-
-n8n Native-Python:
-
-```python
-from tkcrawler.steps.derive_source_health import derive_source_health_item
-
-out = []
-for item in _items:
-    out.append({"json": derive_source_health_item(item["json"])})
-return out
-```
-
-Empfohlenes Data-Table-Update:
-
-- `source_health_status = {{$json.source_health_status}}`
-- `source_health_reason = {{$json.source_health_reason}}`
-- `source_health_json = {{$json.source_health_json}}`
-- `operator_attention = {{$json.operator_attention}}`
-- `operator_attention_reason = {{$json.operator_attention_reason}}`
-
-## `Python: Build infl0 Source Status Body`
-
-Wenn infl0 die Source-Health-/Operator-API bereitstellt, sollte der
-Abschlussflow nach `Derive Source Health` zusaetzlich einen HTTP-Body fuer
-infl0 bauen. Der Step konvertiert die n8n/Data-Table-Felder in camelCase und
-parst JSON-Strings wie `effective_policy`, `detected_policy_json`,
-`source_health_json` und `last_crawl_result_json`.
-
-n8n Native-Python:
-
-```python
-from tkcrawler.steps.build_source_status_body import build_source_status_body_item
-
-out = []
-for item in _items:
-    out.append({"json": build_source_status_body_item(item["json"])})
-return out
-```
-
-Danach HTTP Request:
-
-- Method: `POST`
-- URL: `{{ $vars.INFL0_BASE_URL }}/api/crawler/source-status`
-  oder direkt `https://reader.neurospicy.icu/api/crawler/source-status`
-- Auth: gleicher Bearer/API-Key wie beim Ingest
-- JSON Body: `={{ $json.infl0_source_status_body }}`
-
-Der Body enthaelt unter anderem:
-
-```json
-{
-  "crawlKey": "https://example.com/feed.xml",
-  "sourceHealthStatus": "healthy",
-  "sourceHealthReason": "recent_success",
-  "operatorAttention": false,
-  "lastCrawlStatus": "success",
-  "lastCrawlFinishedAt": "2026-05-09T08:19:00+00:00",
-  "lastSuccessfulCrawlAt": "2026-05-09T08:19:00+00:00",
-  "nextAllowedCrawlAt": "2026-05-09T11:19:00+00:00",
-  "crawlCandidateCount": 10,
-  "crawlSkippedCount": 7,
-  "crawlProcessedCount": 3,
-  "crawlFetchErrorCount": 0,
-  "crawlUnchangedCount": 0,
-  "crawlLlmFailedCount": 0,
-  "consecutiveErrorCount": 0,
-  "effectivePolicy": {"crawl_interval_minutes": 180},
-  "detectedPolicy": {"http_status": 200, "cache_max_age_seconds": 600}
-}
-```
-
-`nextAllowedCrawlAt` ist das zentrale Feld fuer die Nutzerinnenanzeige
-("naechster moeglicher Crawl"). `detectedPolicy` und `operatorAttention*`
-sind vor allem fuer die Betreiberansicht gedacht.
-
-Status-Regeln:
-
-- `success`: keine Fetch- oder LLM-Fehler.
-- `partial_failed`: mindestens ein Erfolg (`processed` oder `unchanged`) und mindestens ein Fehler.
-- `failed`: Fehler, aber keine erfolgreichen Items.
-
-Empfohlenes Data-Table-Update in `crawl_sources`:
-
-- Filter: `crawl_key = {{$json.crawl_key}}`
-- `last_crawl_status = {{$json.last_crawl_status}}`
-- `last_crawl_finished_at = {{$json.last_crawl_finished_at}}`
-- `last_crawl_error = {{$json.last_crawl_error}}`
-- `last_crawl_result_json = {{$json.last_crawl_result_json}}`
-- `crawl_total_count = {{$json.crawl_total_count}}`
-- optional `crawl_candidate_count = {{$json.crawl_candidate_count}}`
-- optional `crawl_skipped_count = {{$json.crawl_skipped_count}}`
-- `crawl_fetch_error_count = {{$json.crawl_fetch_error_count}}`
-- `crawl_unchanged_count = {{$json.crawl_unchanged_count}}`
-- `crawl_processed_count = {{$json.crawl_processed_count}}`
-- `crawl_llm_failed_count = {{$json.crawl_llm_failed_count}}`
-- `consecutive_error_count = {{$json.consecutive_error_count}}`
-- optional `last_successful_crawl_at = {{$json.last_successful_crawl_at}}`
-
-## Tabellenerweiterungen
-
-Der Dispatcher braucht diese Felder in `crawl_sources`:
-
-- `effective_policy_json`
-- `detected_policy_json`
-- `next_allowed_crawl_at`
-- `last_crawl_started_at`
-- `last_crawl_finished_at`
 - `last_crawl_status`
+- `last_crawl_finished_at`
 - `last_crawl_error`
-- `last_dispatch_reason`
-
-Optional:
-
-- `crawl_running_since`
-- `last_successful_crawl_at`
-- `consecutive_error_count`
-- `last_http_status`
+- `crawl_total_count`
 - `crawl_candidate_count`
 - `crawl_skipped_count`
+- `crawl_fetch_error_count`
+- `crawl_unchanged_count`
+- `crawl_processed_count`
+- `crawl_llm_failed_count`
+- `consecutive_error_count`
+- `last_successful_crawl_at`
+- `last_crawl_result_json`
 
-## Kurzfristige Migration
+## Source Health
 
-Als erster kleiner Schritt reicht:
+After the source row has current crawl counters, run `derive_source_health` and `build_source_status_body`. Send the resulting body to infl0 via `POST /api/crawler/source-status`.
 
-1. `next_allowed_crawl_at` als Spalte anlegen.
-2. Im `Get row(s)`-Ergebnis einen Python-Filter `should_dispatch` einfuegen.
-3. Nur `should_dispatch = true` an `Execute Workflow` weitergeben.
-4. Nach dem Crawl `next_allowed_crawl_at` anhand eines Default-Intervalls setzen.
+`nextAllowedCrawlAt` is important for user-facing source status. Error counters and operator attention fields are mainly for operator views.
 
-Danach koennen Source-Policy, erkannte RSS-/HTTP-Hinweise und Backoff schrittweise dazukommen.
+## Status Semantics
+
+- `success`: no fetch or LLM failures.
+- `partial_failed`: at least one success or unchanged item and at least one error.
+- `failed`: errors without successful items.
+- `skipped`: source was not due or not crawlable.
+
+## Minimal First Step
+
+1. Add `next_allowed_crawl_at` to the source table.
+2. Add a Python dispatch filter that sets `should_dispatch`.
+3. Send only `should_dispatch = true` rows to the child workflow.
+
+Then add policy inspection, detected hints and backoff behavior incrementally.

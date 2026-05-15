@@ -1,6 +1,4 @@
-"""
-Payload für POST /api/crawler/ingest (infl0), flaches JSON wie server/api/crawler/ingest.post.ts.
-"""
+"""Payload helpers for infl0 POST /api/crawler/ingest."""
 
 from __future__ import annotations
 
@@ -8,11 +6,11 @@ from typing import Any, Mapping
 
 import tldextract
 
-from crawler.utils.text_processor import calculate_hash
+from tkcrawler.text import calculate_hash
 
 
 def finalize_entry_metadata(entry: Mapping[str, Any], *, source_type: str, source_feed_url: str) -> dict[str, Any]:
-    """Ergänzt source_type, tld, content_hash wie der klassische collector."""
+    """Add source metadata and content hash to an ingest item."""
     out = dict(entry)
     md = out.get("content_md")
     if md:
@@ -20,7 +18,7 @@ def finalize_entry_metadata(entry: Mapping[str, Any], *, source_type: str, sourc
     else:
         out["content_hash"] = None
     out["source_type"] = source_type
-    out["tld"] = tldextract.extract(source_feed_url).registered_domain
+    out["tld"] = tldextract.extract(source_feed_url).top_domain_under_public_suffix
     return out
 
 

@@ -1,4 +1,4 @@
-# Gleiche Basis wie der Collector; im n8n-Container per pip install -r installieren
+# Gleiche Basis wie die Step-Pipeline; im n8n-Container per pip install -r installieren
 # (oder Repo als Volume mounten und PYTHONPATH auf das Projektroot setzen).
 beautifulsoup4==4.14.3
 feedparser==6.0.12

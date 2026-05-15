@@ -1,6 +1,4 @@
-"""
-n8n Data Table Zeile → Quellen-Dict wie in config/sources.json.
-"""
+"""Convert n8n Data Table rows into source dictionaries."""
 
 from __future__ import annotations
 
@@ -10,8 +8,8 @@ from typing import Any, Mapping
 
 def row_to_source(row: Mapping[str, Any]) -> dict:
     """
-    Erwartete Spalten (siehe n8n/docs/DATA_TABLES.md):
-    name, type, url, optional configuration_json (String mit JSON-Object für html-Quellen).
+    Expected columns, see n8n/docs/DATA_TABLES.md:
+    name, type, url and optional configuration_json for HTML sources.
     """
     name = (row.get("name") or "").strip()
     typ = (row.get("type") or "").strip()
@@ -33,7 +31,7 @@ def row_to_source(row: Mapping[str, Any]) -> dict:
 
 
 def row_with_crawl_key(row: Mapping[str, Any]) -> dict:
-    """Ergänzt crawl_key aus url, falls nicht gesetzt (für Abgleich mit infl0 user_feeds)."""
+    """Add crawl_key from url when missing so rows match infl0 user_feeds."""
     from tkcrawler.crawl_key import normalize_feed_url
 
     out = dict(row)

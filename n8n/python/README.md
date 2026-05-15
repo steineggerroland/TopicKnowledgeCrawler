@@ -1,10 +1,16 @@
-# Python-Skripte für n8n Code Nodes
+# Python Snippets for n8n Code Nodes
 
-Jede Datei ist so gedacht, dass du den **Inhalt** (ohne führende Kommentare optional) in einen **Python Code**-Node kopierst – oder das Repo mountest und `Path(__file__)` durch einen festen Pfad zu deinem Clone ersetzt.
+Each file in this directory is meant to be copied into a n8n Python Code node, or used as a reference for writing the node inline.
 
-## Pfade
+## Paths
 
-Setze **`TOPIC_CRAWLER_ROOT`** auf das **Repository-Root** (enthält `src/tkcrawler` und `src/crawler`). Die Skripte hängen zusätzlich `…/src` an `sys.path`. Mit **`pip install -e .`** im Container ist `PYTHONPATH` optional. Beispiel Docker:
+Prefer installing the repository in the Python runner image:
+
+```bash
+pip install -e /opt/TopicKnowledgeCrawler
+```
+
+If you mount the repository during development, set `TOPIC_CRAWLER_ROOT` to the repository root and add `src/` to `PYTHONPATH` if needed.
 
 ```yaml
 environment:
@@ -13,22 +19,18 @@ volumes:
   - /opt/TopicKnowledgeCrawler:/data/TopicKnowledgeCrawler:ro
 ```
 
-Die Skripte nutzen standardmäßig `/data/TopicKnowledgeCrawler`, falls die Variable fehlt.
+## Snippet Files
 
-## Dateien
+| File | Role |
+|------|------|
+| `code_normalize_crawl_key.py` | Compute `crawl_key` from `url` when missing. |
+| `code_merge_enrichment_for_infl0.py` | Merge `article` and LLM fields into `infl0_ingest_body`. |
 
-| Datei | Rolle |
-|--------|--------|
-| `code_normalize_crawl_key.py` | Nur `crawl_key` aus `url` berechnen (infl0-kompatibel). |
-| `code_analyze_source_row.py` | Wie `SourceAnalyzer`: `type` rss/html + bei HTML `configuration_json` (LLM). |
-| `code_fetch_expand.py` | Quelle → n Artikel (RSS/HTML/Podcast). |
-| `code_merge_enrichment_for_infl0.py` | `article` + optionale LLM-Felder → `infl0_ingest_body`. |
-
-Geplante Aufteilung des groben Fetch-Schritts: siehe [`../docs/CURRENT_WORKFLOW_MIGRATION.md`](../docs/CURRENT_WORKFLOW_MIGRATION.md). Dort sind die kuenftigen Node-Vertraege fuer `analyze_source`, `inspect_source_policy`, `plan_crawl`, `list_candidates`, `filter_candidates`, `fetch_detail` und `finalize_article` beschrieben.
+The actual crawler flow uses portable steps under `tkcrawler.steps`. The same data flow is shown in plain Python in `../../examples/python_step_flow.py`.
 
 ## Portable Steps
 
-Neue portable Steps liegen unter `tkcrawler.steps` und koennen sowohl in n8n als auch per CLI genutzt werden:
+All steps can be used from n8n or from the CLI:
 
 ```bash
 python -m tkcrawler.cli.run_step normalize_source < input.json
@@ -41,9 +43,9 @@ python -m tkcrawler.cli.run_step limit_llm_items < input.json
 python -m tkcrawler.cli.run_step build_ingest_body < input.json
 ```
 
-Wichtig: In n8n werden die `*_item(...)`-Funktionen genutzt. Sie bekommen direkt `item["json"]`, also das flache Payload aus `$json`. Der portable Envelope mit `{ "item": ..., "context": ... }` ist fuer CLI/Runner gedacht, nicht fuer normale n8n-Code-Nodes.
+In n8n, call the `*_item(...)` functions with `item["json"]`, which is the same object as `$json`. The portable `{ "item": ..., "context": ... }` envelope is for CLI and custom runners.
 
-n8n-Code-Node-Beispiel fuer `normalize_source`:
+## `normalize_source`
 
 ```python
 from tkcrawler.steps.normalize_source import normalize_source_item
@@ -54,7 +56,7 @@ for item in _items:
 return out
 ```
 
-n8n-Code-Node-Beispiel fuer den Dispatch-Workflow:
+## `plan_dispatch`
 
 ```python
 from datetime import datetime, timezone
@@ -72,9 +74,9 @@ for item in _items:
 return out
 ```
 
-Danach in n8n per IF auf `{{ $json.should_dispatch }}` verzweigen. Wenn der Python-Node bereits filtert, gibt er bei lauter `not_due`-Quellen `[]` zurueck und der Workflow endet ohne False-Branch.
+Then branch in n8n on `{{ $json.should_dispatch }}`.
 
-n8n-Code-Node-Beispiel fuer `List Candidates V2` im Child-Crawl-Workflow:
+## `list_candidates`
 
 ```python
 from tkcrawler.steps.list_candidates import list_candidates_items
@@ -86,9 +88,9 @@ for item in _items:
 return out
 ```
 
-Dieser Step liest RSS/Podcast-RSS oder HTML-Listing-Seiten und gibt Kandidaten zurueck, ohne Artikel-Detailseiten zu laden. Bei HTML werden nur `article_selector` und `main_page_anchor_selector` aus `configuration_json` angewendet; tiefere Klick-/Follow-Logik gehoert spaeter in Detailfetch/Resolver-Steps.
+This step reads RSS, podcast RSS or HTML listing pages and returns candidates without fetching detail pages.
 
-Fuer Seiten, die nackte Python-Requests blockieren, kann pro Quelle in `policy_json` ein User-Agent gesetzt werden:
+For sources that block plain Python requests, set a user agent in `policy_json`:
 
 ```json
 {
@@ -96,7 +98,7 @@ Fuer Seiten, die nackte Python-Requests blockieren, kann pro Quelle in `policy_j
 }
 ```
 
-n8n-Code-Node-Beispiel fuer `Filter Candidates V2` nach History-Lookup/Merge:
+## `filter_candidates`
 
 ```python
 from datetime import datetime, timezone
@@ -111,9 +113,9 @@ for item in _items:
 return out
 ```
 
-Danach per IF auf `{{ $json.candidate_decision === "fetch" }}` verzweigen. `skip_too_old` bleibt sichtbar im False-Branch und verursacht keinen Detailabruf.
+Then branch on `{{ $json.candidate_decision === "fetch" }}`.
 
-n8n-Code-Node-Beispiel fuer `Fetch Detail V2` nach `candidate_decision == fetch`:
+## `fetch_detail`
 
 ```python
 from tkcrawler.steps.fetch_detail import fetch_detail_item
@@ -131,9 +133,9 @@ for item in _items:
 return out
 ```
 
-Dieser Step laedt fuer RSS-Artikel die Detailseite und erzeugt `article.content_md`. Bei Podcast-RSS bevorzugt er vorhandene Feed-/Shownotes-Inhalte.
+RSS articles fetch detail pages and create `article.content_md`. Podcast RSS prefers existing feed content and shownotes.
 
-n8n-Code-Node-Beispiel fuer `Finalize Item V2` nach erfolgreichem Detailfetch:
+## `finalize_item`
 
 ```python
 from tkcrawler.steps.finalize_item import finalize_item
@@ -144,22 +146,22 @@ for item in _items:
 return out
 ```
 
-Dieser Step ergaenzt `content_hash`, `source_type` und `tld` am `article` und setzt `content_hash` auch flach auf dem n8n-Item. Danach kann der bestehende History-/LLM-Pfad genutzt werden.
+This adds `content_hash`, `source_type` and `tld` to the item.
 
-n8n-Code-Node-Beispiel fuer `Limit LLM Items V2` direkt vor dem AI-Agent-Branch:
+## `limit_llm_items`
 
 ```python
 from tkcrawler.steps.limit_llm_items import limit_llm_items
 
 out = []
-for limited in limit_llm_items(_items and [item["json"] for item in _items] or []):
+for limited in limit_llm_items([item["json"] for item in _items]):
     out.append({"json": limited})
 return out
 ```
 
-Der Step liest `effective_policy.max_llm_items_per_run` pro Quelle. Danach per IF auf `{{ $json.llm_decision === "process" }}` verzweigen. Ueberschuessige Items bekommen `llm_decision = "skip_run_limit"` und koennen ohne LLM gespeichert oder fuer spaetere Laeufe sichtbar gehalten werden.
+The step reads `effective_policy.max_llm_items_per_run`. Items over the limit receive `llm_decision = "skip_run_limit"`.
 
-n8n-Code-Node-Beispiel fuer `build_ingest_body` mit flachem Enrichment-Format:
+## `build_ingest_body`
 
 ```python
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item
@@ -170,8 +172,8 @@ for item in _items:
 return out
 ```
 
-Vor dem HTTP-Node: Body auf `{{ $json.infl0_ingest_body }}` setzen (ggf. „JSON“-Modus).
+Set the following HTTP node body to `{{ $json.infl0_ingest_body }}`.
 
-## Abhängigkeiten
+## Dependencies
 
-Siehe `../requirements-n8n.txt` bzw. Root-`pyproject.toml` – im Runner **`pip install -e /data/TopicKnowledgeCrawler`** (empfohlen).
+See `../requirements-n8n.txt` and the root `pyproject.toml`.

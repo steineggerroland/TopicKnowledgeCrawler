@@ -87,6 +87,6 @@ carry `shownotes_md` when the source feed provided shownotes directly.
 
 ## n8n workflow note
 
-The current V2 workflow still passes items through fields named `article` and
+The current workflow still passes items through fields named `article` and
 `article_id`. That is a workflow compatibility detail. Consumers should inspect
 `article.item_kind` / `item_kind` to decide how to render the content.

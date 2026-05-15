@@ -55,14 +55,14 @@ storage.
 
 | Status | Meaning | Typical UI |
 |--------|---------|------------|
-| `pending` | Source is known but no crawl result is available yet. | "Wartet auf ersten Crawl" |
-| `needs_setup` | Source requires analysis or configuration before it can be crawled. | "Einrichtung noetig" |
-| `healthy` | Recent crawl completed without crawler-relevant problems. | "Aktuell" |
-| `quiet` | Crawl works, but yielded no new usable items. | "Keine neuen Inhalte" |
-| `degraded` | Crawl partially works, but some items or checks failed. | "Teilweise gestoert" |
-| `failing` | Crawl currently fails or analysis failed. | "Fehler" |
-| `blocked` | Source is blocked or rate-limited by the upstream service. | "Blockiert" |
-| `paused` | Source is intentionally inactive or waiting for Retry-After/backoff. | "Pausiert" |
+| `pending` | Source is known but no crawl result is available yet. | "Waiting for first crawl" |
+| `needs_setup` | Source requires analysis or configuration before it can be crawled. | "Setup required" |
+| `healthy` | Recent crawl completed without crawler-relevant problems. | "Current" |
+| `quiet` | Crawl works, but yielded no new usable items. | "No new content" |
+| `degraded` | Crawl partially works, but some items or checks failed. | "Partially degraded" |
+| `failing` | Crawl currently fails or analysis failed. | "Errors" |
+| `blocked` | Source is blocked or rate-limited by the upstream service. | "Blocked" |
+| `paused` | Source is intentionally inactive or waiting for Retry-After/backoff. | "Paused" |
 
 ## Examples
 

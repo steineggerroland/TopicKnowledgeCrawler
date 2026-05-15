@@ -1,11 +1,11 @@
-# n8n + Postgres (Basis: offizielles withPostgres-Beispiel) + Crawler-Mount für Python Runner
+# n8n + Postgres, based on the official withPostgres example, plus crawler mount for the Python runner.
 #
-# Auf dem Server: TopicKnowledgeCrawler nach ~/crawler klonen (oder anderer Pfad).
-# In .env setzen:
+# On the server: clone TopicKnowledgeCrawler to ~/crawler, or choose another path.
+# Set in .env:
 #   CRAWLER_HOST_PATH=/home/<user>/crawler
 #
-# Python-Dependencies im Runner-Image installieren (siehe n8n/requirements-n8n.txt und
-# n8n/DOCKER_CRAWLER.md) — reines :ro-Mount reicht nicht für pip install ins Image.
+# Install Python dependencies in the runner image, see n8n/requirements-n8n.txt and
+# n8n/DOCKER_CRAWLER.md. A read-only mount alone is not enough for pip install inside the image.
 
 volumes:
   db_storage:
@@ -31,9 +31,9 @@ x-shared: &shared
     - N8N_NATIVE_PYTHON_RUNNER=true
     - GENERIC_TIMEZONE=${TZ}
     - TZ=${TZ}
-    # TopicKnowledgeCrawler (Pakete `tkcrawler` + `crawler` unter src/)
+    # TopicKnowledgeCrawler (`tkcrawler` package under src/)
     - TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler
-    # Fallback ohne pip install -e: Module unter src/ finden
+    # Fallback without pip install -e: find modules under src/
     - PYTHONPATH=/data/TopicKnowledgeCrawler/src:/data/TopicKnowledgeCrawler
   links:
     - postgres
@@ -102,4 +102,3 @@ services:
       - ${CRAWLER_HOST_PATH:?set CRAWLER_HOST_PATH in .env}:/data/TopicKnowledgeCrawler:ro
     depends_on:
       - n8n
-

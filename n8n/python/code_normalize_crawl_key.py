@@ -1,7 +1,8 @@
 # n8n → Code → Python
-# Ein Item pro Data-Table-Zeile (crawl_sources). Setzt crawl_key falls leer.
+# One item per Data Table row (crawl_sources). Sets crawl_key when it is empty.
 #
-# Voraussetzung: TopicKnowledgeCrawler im Runner-Image per `pip install -e` (siehe Dockerfile-Beispiel).
+# Prerequisite: TopicKnowledgeCrawler installed in the runner image via
+# `pip install -e`, see the Dockerfile example.
 
 from tkcrawler.crawl_key import normalize_feed_url
 

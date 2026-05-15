@@ -1,24 +1,20 @@
-"""
-Ruft bestehende Fetcher auf (keine Duplikation der HTML/RSS-Logik).
-"""
+"""Compatibility wrapper around the canonical step-based crawl flow."""
 
 from __future__ import annotations
 
 from typing import Any
 
+from tkcrawler.pipeline import crawl_source_items
+
 
 def fetch_entries_for_source(source: dict) -> list[dict[str, Any]]:
-    source_type = source.get("type")
-    if source_type == "rss":
-        from crawler.fetchers.rss_fetcher import RssFetcher
+    """Return finalized content items for a source.
 
-        return RssFetcher(source).fetch()
-    if source_type == "rss+podcast":
-        from crawler.fetchers.podcast_fetcher import PodcastFetcher
-
-        return PodcastFetcher(source).fetch()
-    if source_type == "html":
-        from crawler.fetchers.html_fetcher import HtmlFetcher
-
-        return HtmlFetcher(source).fetch()
-    raise ValueError(f"Unsupported source type: {source_type!r}")
+    Older callers imported this helper to get a list of fetched entries. The
+    implementation now delegates to `tkcrawler.pipeline`.
+    """
+    return [
+        item["article"]
+        for item in crawl_source_items(source)
+        if item.get("article") and not item.get("fetch_detail_error")
+    ]

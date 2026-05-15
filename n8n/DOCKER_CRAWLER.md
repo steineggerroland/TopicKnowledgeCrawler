@@ -1,55 +1,31 @@
-# n8n Docker: TopicKnowledgeCrawler einbinden
+# Python Runner Setup
 
-## Empfohlen: Projekt im Python-Runner-Image (`pip install -e`)
+The recommended setup is a custom Python task runner image that installs TopicKnowledgeCrawler with `pip install -e`.
 
-Damit entfällt manuelles `git clone` auf dem Host für den Runner. Baue ein eigenes Image aus diesem Repo:
+## Custom Image
+
+Build from the repository root:
 
 ```bash
-cd /path/to/TopicKnowledgeCrawler
 docker build -f n8n/docker/Dockerfile.task-runner-python.example -t n8n-runner-python:local .
 ```
 
-In Compose den **Python-Task-Runner** (bzw. den Service, der `n8nio/runners` nutzt) auf **`n8n-runner-python:local`** umstellen. Das Image kopiert `pyproject.toml`, `README.md` und `src/` nach `/opt/TopicKnowledgeCrawler` und führt **`uv pip install -e /opt/TopicKnowledgeCrawler`** aus.
+Then configure the Python task runner service to use `n8n-runner-python:local`.
 
-Optional: Im Dockerfile die auskommentierte **`git clone`**-Variante nutzen (`TKCRAWLER_GIT_URL` / `TKCRAWLER_GIT_REF`), wenn du beim Build aus einem Remote ziehen willst statt `COPY`.
+The image copies or clones the repository and installs the package into the runner environment. This is more reliable than only mounting the repository read-only.
 
-Allowlists und Variablen: [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md). Beispiel-`n8n-task-runners.json`: [`docker/n8n-task-runners.example.json`](docker/n8n-task-runners.example.json).
+## Volume Mount Alternative
 
-## Alternative: Repo per Volume auf dem Host (Dev / schnelle Iteration)
-
-### 1) Repo auf dem Host
-
-```bash
-cd ~
-git clone <dein-repo> crawler
-# oder: git pull in ~/crawler
-```
-
-### 2) `.env` neben `docker-compose.yaml`
+A volume mount can still be useful during development:
 
 ```env
-# Pfad auf dem **Host** zum geklonten Repo (Ordner mit `src/`)
-CRAWLER_HOST_PATH=/home/infl0/crawler
+CRAWLER_HOST_PATH=/home/<user>/crawler
 ```
 
-### 3) Compose
+The mounted path should point to the repository root, the directory that contains `src/`.
 
-Siehe [`docker-compose.server.example.yaml`](docker-compose.server.example.yaml):
+Even with a mount, dependencies must exist in the Python runner image. Use the custom image above or install the dependencies listed in `n8n/requirements-n8n.txt`.
 
-- **`TOPIC_CRAWLER_ROOT=/data/TopicKnowledgeCrawler`** (Repo-Root)
-- **Volume** `${CRAWLER_HOST_PATH}:/data/TopicKnowledgeCrawler:ro` auf **`n8n`** und **`n8n-worker`** (Python Task Runner)
+## Allowlist
 
-Passe deine bestehende `docker-compose.yaml` entsprechend an (oder merge per Diff).
-
-### 4) Pakete im Runner-Image
-
-Auch bei Volume-Mount müssen Abhängigkeiten im **Python-Runner-Image** installiert sein. Am einfahren: eigenes Image wie oben bauen **oder** im Runner-Dockerfile weiterhin `uv pip install …` / `pip install -e` nutzen (siehe `n8n/docker/Dockerfile.task-runner-python.example`).
-
-### 5) infl0 (optional in n8n Env)
-
-```env
-INFL0_BASE_URL=https://reader.neurospicy.icu
-INFL0_CRAWLER_API_KEY=<NUXT_CRAWLER_API_KEY>
-```
-
-Diese Variablen in der n8n-Compose-Umgebung setzen (oder in n8n UI unter Environment), damit der HTTP-Request-Node `{{$env.INFL0_BASE_URL}}` nutzen kann.
+See `docs/PYTHON_RUNNER_ALLOWLIST.md` for the required `N8N_RUNNERS_EXTERNAL_ALLOW` setting.

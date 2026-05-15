@@ -1,306 +1,158 @@
-# Zielarchitektur
+# Target Architecture
 
-Diese Notiz definiert das Ziel fuer die naechste Entwicklungsstufe des TopicKnowledgeCrawler. Der Fokus liegt nicht mehr auf einem eigenstaendigen Crawler-Produkt, sondern auf einer robusten, gut orchestrierbaren Ingestion- und Aufbereitungs-Pipeline fuer infl0.
+This note defines the target direction for TopicKnowledgeCrawler. The project is no longer meant to become a standalone crawler product. Its role is to provide a robust, observable ingestion and preparation pipeline for infl0.
 
-Der konkrete Umsetzungsplan ist in [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) beschrieben.
+n8n is currently the production orchestrator, and that is fine. The Python layer should therefore not pretend to be a full application. It should either be:
 
-## Grundentscheidung
+1. a small, well-tested library for parsing, normalization and decision logic, or
+2. disappear for parts where n8n can own the logic cleanly.
 
-n8n ist aktuell die produktive Orchestrierung. Das darf so bleiben. Die Python-Schicht soll deshalb nicht kuenstlich eine vollstaendige Applikation simulieren, sondern entweder:
+Both options are acceptable as long as the domain workflow is documented independently from n8n JSON exports.
 
-1. eine schlanke, gut testbare Library fuer Parsing, Normalisierung und Entscheidungslogik sein, oder
-2. als separate Library ganz entfallen, wenn der Python-Code in n8n klein, explizit und wartbar bleibt.
+## Goal
 
-Beide Varianten sind akzeptabel, solange der fachliche Workflow abstrakt dokumentiert ist und nicht nur als n8n-JSON existiert.
+We want a pipeline that processes sources intelligently, respectfully and transparently:
 
-## Ziel
+- Synchronize sources from infl0.
+- Classify sources as RSS, podcast RSS, HTML or unknown.
+- Validate HTML source configuration.
+- Respect crawl intervals and rate limits per source.
+- Decide before expensive detail fetches whether an item is relevant.
+- Process only new or meaningfully refreshable content.
+- Split long sources into stable learning and timeline items.
+- Keep enrichment and ingest transparent through n8n.
 
-Wir wollen eine Pipeline, die Quellen intelligent, ruecksichtsvoll und nachvollziehbar verarbeitet:
+## Product Context
 
-- Quellen aus infl0 synchronisieren.
-- Quellen klassifizieren: RSS, Podcast-RSS, HTML oder unbekannt.
-- Perspektivisch weitere Quellenfamilien unterstuetzen: soziale Netzwerke, Dokumente, Buecher, Paper-Feeds und andere Wissensquellen.
-- HTML-Quellen mit validierter Selector-Konfiguration nutzbar machen.
-- Source-Hinweise erkennen: RSS `ttl`, `skipHours`, HTTP Cache-Header, `Retry-After`, optional robots `Crawl-delay`.
-- Crawl-Intervalle und Rate-Limits pro Quelle respektieren.
-- Vor teuren Detailabrufen entscheiden, ob ein Artikel ueberhaupt relevant ist.
-- Nur neue oder sinnvoll aktualisierbare Inhalte verarbeiten.
-- Lange Quellen in sinnvolle Lern- und Timeline-Happen zerlegen.
-- Enrichment und Ingest weiterhin transparent ueber n8n steuern.
-- infl0 kann den Crawl-Prozess perspektivisch starten und Status sehen.
+infl0 should be the reading and learning app for users: a compact inflow where all relevant information sources for their topics are prepared, learnable and easy to process.
 
-## Produktvision
+The pipeline should not merely fetch articles. It should turn knowledge sources into consumable infl0 items:
 
-infl0 soll die Lese- und Lernapp fuer Nutzerinnen sein: ein kompakter Inflow, in dem alle spannenden Informationsquellen zu ihren Themen sauber aufbereitet, lernbar und erfassbar erscheinen.
+- current articles from RSS/Atom and HTML sources,
+- podcast episodes,
+- social posts or threads,
+- chapters or sections from PDFs and EPUBs,
+- new scientific papers or paper references,
+- later, additional personal or curated knowledge sources.
 
-Die Pipeline soll nicht nur "Artikel holen", sondern Wissensquellen in konsumierbare infl0-Items verwandeln:
+The common denominator is not the technical source format. The goal is that users can understand, revisit and learn from new information efficiently.
 
-- aktuelle Artikel aus RSS/Atom und HTML-Quellen,
-- Podcast-Episoden und Shownotes,
-- Posts oder Threads aus sozialen Netzwerken wie Mastodon,
-- neue wissenschaftliche Paper oder Paper-Hinweise,
-- Buecher und lange Dokumente aus PDF oder EPUB,
-- spaeter weitere persoenliche oder kuratierte Wissensquellen.
+## Non-Goals
 
-Der gemeinsame Nenner ist nicht das technische Quellformat, sondern das Ziel: Nutzerinnen sollen neue Informationen effizient erfassen, wiederfinden und lernen koennen.
+- No separate crawler backend unless the workflow clearly outgrows n8n.
+- No hidden persistence in the Python package.
+- No second source of truth for infl0 timeline ranking. Feed scoring belongs to infl0 because it uses user behavior.
+- No hard dependency on one LLM provider in Python.
 
-## Nicht-Ziel
+## Abstract Workflow
 
-- Kein eigenstaendiger Scheduler im Python-Projekt.
-- Keine eigene Python-Datenbank, solange n8n Data Tables oder infl0 den Zustand halten.
-- Kein monolithischer Python-Crawler, der n8n nur noch als Startknopf benutzt.
-- Keine n8n-spezifische Fachlogik, die nicht zusaetzlich abstrakt beschrieben ist.
+The workflow should be described in domain steps that can be implemented in n8n or another orchestration system:
 
-## Abstrakter Workflow
+1. `sync_sources`: fetch sources from infl0 or another source registry.
+2. `normalize_source`: normalize URL, crawl key, display name and source shape.
+3. `analyze_source`: detect content type and source type.
+4. `prepare_html_analysis`: prepare HTML pages for LLM-assisted selector detection.
+5. `apply_html_analysis`: persist generated selector configuration.
+6. `validate_source_configuration`: verify that the source can produce candidates.
+7. `inspect_source_policy`: inspect cache headers, RSS TTL and retry hints.
+8. `plan_dispatch`: decide whether a source may run now.
+9. `list_candidates`: cheaply list article or episode candidates.
+10. `filter_candidates`: compare candidates with history and policy.
+11. `fetch_detail`: fetch and extract exactly one article or episode.
+12. `finalize_item`: add metadata, content hash and source metadata.
+13. `limit_llm_items`: cap expensive enrichment work per run.
+14. `enrich_item`: run LLM enrichment in n8n.
+15. `build_ingest_body`: build the infl0 ingest body.
+16. `send_to_infl0`: call infl0.
+17. `finalize_crawl_run`: aggregate run counters and health state.
+18. `send_source_status`: publish source status to infl0.
 
-Der Workflow soll unabhaengig von n8n in fachliche Schritte zerlegt sein:
+n8n is one concrete implementation of these steps. Another system should be able to implement the same steps and data contracts.
 
-1. `sync_sources`: Hole Quellen aus infl0 oder einer anderen Quelle.
-2. `normalize_source`: Normalisiere Felder wie `crawl_key`, `url`, `name`.
-3. `analyze_source`: Bestimme `type` und ggf. HTML-Konfiguration.
-4. `validate_source`: Pruefe, ob die Quelle crawlbar ist.
-5. `inspect_source_policy`: Erkenne technische Crawl-Hinweise.
-6. `plan_dispatch`: Entscheide, ob die Quelle jetzt gestartet werden darf.
-7. `list_candidates`: Ermittle guenstig Artikel-/Episoden-Kandidaten.
-8. `filter_candidates`: Entscheide vor Detailabruf, welche Kandidaten verarbeitet werden.
-9. `fetch_detail`: Lade und extrahiere genau einen Artikel/eine Episode.
-10. `segment_content`: Zerlege lange Inhalte optional in sinnvolle Einheiten.
-11. `finalize_item`: Berechne Hashes und technische Metadaten.
-12. `enrich_item`: Erzeuge Teaser, Summary, Kategorien, Tags und Rating.
-13. `ingest_item`: Sende den finalen Payload an infl0.
-14. `record_status`: Speichere Run-, Source- und Itemstatus.
+## Source Families
 
-n8n ist eine konkrete Implementierung dieser Schritte. Ein anderes System muesste dieselben Schritte und Datenvertraege nachbauen koennen.
+### Articles
 
-## Quellenfamilien
+Articles are the current baseline. They come from RSS, Atom or HTML listing pages. Important assumptions:
 
-Die Architektur sollte Quellenfamilien unterscheiden, weil sie unterschiedliche Kandidaten-, Fetch- und Segmentierungslogik brauchen.
+- candidates are cheap to list,
+- detail pages are often expensive,
+- old items can usually be ignored after a refresh window,
+- content changes are detected through `content_hash`.
 
-### Feed- und Webquellen
+### Podcast Episodes
 
-Beispiele:
+Podcast episodes are timeline items, not merely article variants. The existing `episode` item kind extends the shared item model with fields such as audio URL, duration, MIME type, shownotes and chapters.
 
-- RSS/Atom
-- Podcast-RSS
-- HTML-Listing-Seiten
+Preferred extraction order:
 
-Typische Einheit:
+1. rich feed content or shownotes,
+2. episode description or iTunes summary,
+3. linked detail page,
+4. title and metadata fallback for a minimal teaser.
 
-- Artikel
-- Episode
-- Link aus einer Listing-Seite
+### Social Sources
 
-Besonderheiten:
+Social sources such as Mastodon should be modeled as source adapters that produce normalized candidates. Threads may become parent/child item groups. This should remain an adapter concern, not a change to the whole workflow.
 
-- haeufige Updates,
-- Rate-Limits und Cache-Header,
-- alte Items koennen meist nach einem Refresh-Fenster ignoriert werden,
-- Detailseiten sind oft der teuerste Schritt.
+### Documents
 
-### Soziale Quellen
+PDF and EPUB sources are long-form knowledge sources. They should be segmented into stable items, for example by chapter, heading or semantic section. Each segment needs a stable ID, position and parent document metadata.
 
-Beispiele:
+### Research Sources
 
-- Mastodon-Accounts, Hashtags oder Listen,
-- perspektivisch andere soziale Netzwerke, sofern API/Export/Feed verfuegbar und rechtlich/technisch sauber nutzbar.
+Paper sources should produce item types such as paper references, abstracts, sections or method/result summaries. They need careful metadata handling and conservative summarization.
 
-Typische Einheit:
+## Item Model
 
-- Post,
-- Thread,
-- Link-Sammlung,
-- Diskussion.
+The target model is an infl0 item, not only an article.
 
-Besonderheiten:
+Common fields:
 
-- deutlich staerkeres Rate-Limiting,
-- Duplikate und Reposts/Boosts,
-- kurze Inhalte mit viel Kontextverlust,
-- Thread-Zusammenfassung kann wichtiger sein als Einzelpost-Zusammenfassung.
+- `item_id`: stable item id.
+- `source_key`: stable source id.
+- `source_type`: source family or concrete source type.
+- `item_kind`: article, episode, post, chapter, section, paper and so on.
+- `title`.
+- `link`.
+- `published_at`.
+- `updated_at`.
+- `author`.
+- `content_md`.
+- `summary`.
+- `content_hash`.
+- `position`, optional for long sources.
+- `parent_item_id`, optional for chapters, sections or threads.
 
-### Dokumente und Buecher
+The field name `article` may still appear inside n8n for compatibility, but the documented contract should move toward `item` semantics.
 
-Beispiele:
+## Python Layer
 
-- PDF,
-- EPUB,
-- lange Reports,
-- Whitepaper,
-- Buecher.
+The Python layer should contain reusable logic:
 
-Typische Einheit:
+- normalization,
+- source analysis,
+- policy and dispatch decisions,
+- candidate listing,
+- detail extraction,
+- finalization,
+- payload construction,
+- source health derivation,
+- parser and adapter helpers.
 
-- Kapitel,
-- Abschnitt,
-- semantischer Chunk,
-- Lernkarte oder Timeline-Item.
+It should not contain workflow state persistence, n8n Data Table persistence, LLM provider orchestration, or infl0 feed ranking logic.
 
-Besonderheiten:
+## n8n Layer
 
-- eine Quelle erzeugt viele infl0-Items,
-- Segmentierung ist ein Kernschritt, nicht nur ein Detail,
-- Fortschritt, Reihenfolge und Kontext muessen erhalten bleiben,
-- Updates sind selten; wichtiger sind Idempotenz, Versionierung und Wiederaufnahme.
+n8n remains responsible for scheduling, table access, branching, LLM nodes, batching, retries, HTTP calls to infl0 and operational visibility.
 
-### Paper- und Research-Quellen
+## Success Criteria
 
-Beispiele:
-
-- Paper-Feeds,
-- Suchalerts,
-- Scholar-/Preprint-Quellen, sofern verfuegbar,
-- manuell gespeicherte Paper.
-
-Typische Einheit:
-
-- Paper-Hinweis,
-- Abstract,
-- Volltext-Abschnitt,
-- Methoden-/Ergebnis-Zusammenfassung.
-
-Besonderheiten:
-
-- Metadaten sind wichtig: Autorinnen, Venue, Jahr, DOI/arXiv-ID,
-- Relevanzfilter ist wichtiger als blinde Aufnahme,
-- Zusammenfassung sollte wissenschaftliche Aussagen vorsichtig und nachvollziehbar darstellen.
-
-## Einheitliches Item-Modell
-
-Unabhaengig von der Quelle soll die Pipeline am Ende infl0-Items erzeugen. Ein Item kann ein Artikel, Post, Thread, Kapitel, Abschnitt oder Paper sein.
-
-Gemeinsame Felder:
-
-- `item_id`: stabile ID fuer genau dieses Item.
-- `source_key`: stabile ID der Quelle.
-- `source_type`: Quellenfamilie oder konkreter Typ.
-- `title`
-- `link` oder `origin_ref`
-- `author`
-- `publishedAt`
-- `updatedAt`
-- `content_md`
-- `content_hash`
-- `position`: optional fuer Reihenfolge innerhalb langer Quellen.
-- `parent_item_id`: optional fuer Kapitel/Abschnitte/Threads.
-- `item_kind`: `article`, `episode`, `post`, `thread`, `chapter`, `section`, `paper`, `abstract`.
-
-Der bisherige Begriff `article` bleibt fuer RSS/HTML passend, sollte im Zielmodell aber zu `item` generalisiert werden. Die n8n-Workflows koennen intern noch `article` verwenden, solange die Abstraktion dokumentiert ist.
-
-## Option A: Schlanke Library-Schicht
-
-Die Library bleibt, aber sie wird bewusst klein gehalten.
-
-Sie enthaelt:
-
-- Datennormalisierung: `crawl_key`, Source-Zeilen, Candidate-Zeilen.
-- Parser: RSS/Atom, Podcast-RSS, HTML-Listing, HTML-Detailseite.
-- perspektivisch Parser/Adapter fuer soziale Quellen, Dokumente und Paper-Metadaten.
-- Policy-Helfer: erkannte Hinweise normalisieren, effektive Policy berechnen, `next_allowed_crawl_at` bestimmen.
-- Entscheidungsfunktionen: `should_dispatch`, `should_fetch_candidate`.
-- Segmentierungshelfer fuer lange Dokumente.
-- Payload-Bau: infl0-Ingest-Body.
-- Tests fuer Parser, Policy und Entscheidungen.
-
-Sie enthaelt nicht:
-
-- n8n-Node-Ablaufsteuerung.
-- Persistenzlogik fuer n8n Data Tables.
-- LLM-Orchestrierung.
-- lange End-to-End-Crawl-Jobs.
-- eigene Scheduler- oder Queue-Logik.
-
-Vorteile:
-
-- Entscheidungslogik ist testbar.
-- n8n-Code-Nodes bleiben klein.
-- Spaeterer Wechsel auf ein anderes Orchestrierungssystem bleibt realistischer.
-- Gemeinsame Logik fuer RSS, HTML und Podcast kann sauber wiederverwendet werden.
-
-Nachteile:
-
-- Packaging und Deployment der Library im n8n-Runner bleiben noetig.
-- Es gibt weiterhin eine Grenze zwischen Workflow und Code, die gepflegt werden muss.
-
-## Option B: Python vollstaendig in n8n
-
-Die separate Library-Schicht faellt weg oder wird nur noch als Referenz/Archiv genutzt. Python-Code lebt direkt in n8n-Code-Nodes.
-
-Voraussetzungen:
-
-- Jeder Python-Node bleibt klein und hat einen klaren JSON-Vertrag.
-- Gemeinsame Hilfsfunktionen werden entweder bewusst dupliziert oder als kopierbare Snippets dokumentiert.
-- Der abstrakte Workflow und die Datenvertraege sind im Repo dokumentiert.
-- Kritische Logik wird durch Beispiel-Inputs/-Outputs und ggf. lokale Test-Skripte abgesichert.
-
-Vorteile:
-
-- Weniger Deployment-Komplexitaet.
-- n8n-Workflow ist die eine sichtbare Wahrheit.
-- Schnelleres Iterieren direkt im produktiven Werkzeug.
-
-Nachteile:
-
-- Staerkere Bindung an n8n.
-- Weniger klassische Unit-Testbarkeit.
-- Hoeheres Risiko fuer Logikdrift zwischen Nodes.
-- Wiederverwendung ausserhalb von n8n wird schwieriger.
-
-## Entscheidungskriterium
-
-Die Library lohnt sich nur, wenn sie echte Komplexitaet kapselt.
-
-Behalten als schlanke Library:
-
-- RSS/Atom-Parsing und Datumsnormalisierung.
-- HTML-Extraktion und Markdown-Erzeugung.
-- Candidate- und Policy-Entscheidungen.
-- Hashing und infl0-Payload-Bau.
-
-Nach n8n verschieben:
-
-- Ablaufentscheidungen zwischen Nodes.
-- Data-Table-Lookups und Upserts.
-- Retry-/Batch-/Wait-Logik.
-- AI-Enrichment-Orchestrierung.
-- Status-Updates, sofern sie rein workflowbezogen sind.
-
-Wenn eine Funktion keinen Test braucht, keine gemeinsame Wiederverwendung hat und direkt n8n-Felder verdrahtet, gehoert sie eher in n8n. Wenn eine Funktion Parser-/Policy-/Entscheidungslogik enthaelt, gehoert sie eher in die Library.
-
-## Empfohlene Richtung
-
-Kurzfristig: Option A, aber radikal schlank.
-
-Die bestehende `tkcrawler`-Schicht wird nicht zu einer grossen App ausgebaut. Sie wird zu einem Toolkit fuer:
-
-- `normalize_source`
-- `inspect_source_policy`
-- `plan_dispatch`
-- `list_candidates`
-- `filter_candidates`
-- `fetch_detail`
-- `segment_content`
-- `finalize_item`
-- `build_ingest_body`
-
-n8n bleibt verantwortlich fuer:
-
-- Trigger
-- Tabellenzugriff
-- Batches
-- Waits und Retries
-- AI-Agent
-- Ingest-Aufruf
-- Statusspeicherung
-
-Mittelfristig kann nach jeder extrahierten Funktion entschieden werden, ob sie wirklich als Library-Funktion wertvoll ist. Falls nicht, darf sie wieder als n8n-Code-Node leben.
-
-## Erfolgskriterien
-
-- Der Crawl-Dispatcher startet nur faellige Quellen.
-- Eine bekannte alte RSS-/Podcast-Episode verursacht keinen Detailabruf.
-- HTML-Quellen koennen mit gueltiger Konfiguration produktiv verarbeitet werden.
-- Lange Dokumente koennen in stabile, nachvollziehbare infl0-Items zerlegt werden.
-- Neue Quellenfamilien koennen ueber Adapter ergaenzt werden, ohne den gesamten Workflow umzubauen.
-- Rate-Limits und erkannte Source-Hinweise beeinflussen `next_allowed_crawl_at`.
-- Der n8n-Workflow bleibt in kleinen, nachvollziehbaren Schritten debugbar.
-- Der abstrakte Workflow ist so dokumentiert, dass er spaeter auf ein anderes Orchestrierungssystem uebertragbar waere.
+- The dispatcher starts only due sources.
+- Known old RSS or podcast episodes do not trigger detail fetches.
+- HTML sources with valid configuration can run productively.
+- Long documents can be split into stable infl0 items.
+- New source families can be added through adapters.
+- infl0 receives source health data for user and operator views.
+- n8n remains debuggable through small, explicit steps.
+- The workflow is documented well enough to be ported to another orchestrator later.

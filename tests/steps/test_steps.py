@@ -368,7 +368,7 @@ def test_build_ingest_body_item_uses_flat_enrichment():
     assert body["category"] == ["factual information"]
 
 
-def test_build_ingest_body_step_accepts_legacy_output():
+def test_build_ingest_body_step_accepts_flat_enrichment_output():
     result = build_ingest_body_step(
         {
             "item": {
@@ -1072,7 +1072,7 @@ def test_fetch_detail_passes_policy_user_agent(mock_markdown):
     )
 
 
-@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Shownotes")
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Shownotes")
 def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
     out = fetch_detail_item(
         {
@@ -1115,7 +1115,7 @@ def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
 
 
 @patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Shownotes")
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Shownotes")
 def test_fetch_detail_podcast_fetches_chapters(mock_markdown, mock_get):
     response = Mock()
     response.json.return_value = {
@@ -1169,7 +1169,7 @@ def test_fetch_detail_podcast_fetches_chapters(mock_markdown, mock_get):
 
 
 @patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text_processor.convert_from_html_to_markdown", return_value="Summary only")
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
 def test_fetch_detail_podcast_keeps_chapter_fetch_error(mock_markdown, mock_get):
     mock_get.side_effect = RuntimeError("chapters unavailable")
 
@@ -1552,7 +1552,7 @@ def test_build_source_status_body_keeps_explicit_health_when_never_crawled():
 
 @patch("tkcrawler.infl0_payload.tldextract.extract")
 def test_finalize_item_sets_metadata(mock_extract):
-    mock_extract.return_value.registered_domain = "example.com"
+    mock_extract.return_value.top_domain_under_public_suffix = "example.com"
 
     out = finalize_item(
         {
@@ -1577,7 +1577,7 @@ def test_finalize_item_sets_metadata(mock_extract):
 
 @patch("tkcrawler.infl0_payload.tldextract.extract")
 def test_finalize_item_step_returns_envelope(mock_extract):
-    mock_extract.return_value.registered_domain = "example.com"
+    mock_extract.return_value.top_domain_under_public_suffix = "example.com"
 
     result = finalize_item_step(
         {

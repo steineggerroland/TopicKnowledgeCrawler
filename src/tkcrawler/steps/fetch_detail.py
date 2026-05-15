@@ -4,8 +4,8 @@ from typing import Any, Mapping
 
 import requests
 
-from crawler.fetchers.html_fetcher import HtmlFetcher
-from crawler.utils import text_processor
+from tkcrawler import text
+from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
@@ -34,7 +34,7 @@ def _markdown_from_feed_content(candidate: Mapping[str, Any]) -> tuple[str, str]
     if not feed_content:
         raise StepError("missing_feed_content", "Candidate has no feed content")
 
-    markdown = text_processor.convert_from_html_to_markdown(f"<html><body>{feed_content}</body></html>")
+    markdown = text.convert_from_html_to_markdown(f"<html><body>{feed_content}</body></html>")
     if not markdown:
         markdown = str(feed_content)
     if title:

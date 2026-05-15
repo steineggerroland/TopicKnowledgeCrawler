@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tkcrawler"
 version = "0.1.0"
-description = "TopicKnowledgeCrawler: RSS/HTML crawler (crawler) + n8n/infl0 helpers (tkcrawler)"
+description = "TopicKnowledgeCrawler: portable RSS/HTML/podcast crawler steps for infl0 and workflow systems"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

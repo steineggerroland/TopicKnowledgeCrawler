@@ -1,48 +1,55 @@
-# n8n-Workflow (Überblick)
+# n8n Workflow Overview
 
-## Ziele
+## Goals
 
-- **Quellen** aus einer n8n **Data Table** (oder manuell/Webhook) statt nur `sources.json`.
-- **Zwischenstände** in Data Tables statt `summary_history.json`.
-- **Sprachmodell** in n8n **AI Nodes**, nicht mehr `summarizer.py` / `LlmPrompter` zur Laufzeit.
-- **Auslieferung** an infl0 mit `POST /api/crawler/ingest` und Header `X-Crawler-Key` / `Authorization: Bearer`.
+- Read sources from a n8n Data Table or from infl0.
+- Store intermediate state in Data Tables instead of local JSON files.
+- Run LLM enrichment in n8n AI Nodes.
+- Run crawler logic through portable `tkcrawler.steps` functions.
+- Send items to infl0 through `POST /api/crawler/ingest`.
 
-## Quellen aus infl0 (optional, vor dem Crawl)
+## Source Sync
 
-- **HTTP Request** – `GET {{$env.INFL0_BASE_URL}}/api/crawler/sources`, Header wie bei Ingest (`X-Crawler-Key`).
-- Ergebnis in die Data Table **`crawl_sources`** schreiben (Insert or update pro `crawl_key`), siehe `DATA_TABLES.md` → Abschnitt „Quellen aus infl0 synchronisieren“.
-- **Anschließend** (oder für jede neue Zeile): wie lokal `SourceAnalyzer` — **`type`** (`rss` / `html`) und bei HTML **`configuration_json`** setzen (`n8n/python/code_analyze_source_row.py`), damit `code_fetch_expand.py` / `row_to_source` zuverlässig arbeiten.
+infl0 can provide sources through `GET {{$env.INFL0_BASE_URL}}/api/crawler/sources`. Store the result in the `crawl_sources` Data Table keyed by `crawl_key`.
 
-Der konkrete Source-Sync-/SourceAnalyzer-Workflow ist in [`SOURCE_SYNC_WORKFLOW.md`](SOURCE_SYNC_WORKFLOW.md) als Ist-Zustand und Zielstruktur dokumentiert.
+For new or incomplete rows, run the source-analysis steps:
 
-## Empfohlene Node-Kette
+- `analyze_source`
+- `prepare_html_analysis`
+- n8n AI selector generation for HTML sources
+- `apply_html_analysis`
+- `validate_source_configuration`
 
-Die aktuelle produktive Variante und die geplante Zerlegung des grossen `Python: Fetch + Expand`-Schritts sind in [`CURRENT_WORKFLOW_MIGRATION.md`](CURRENT_WORKFLOW_MIGRATION.md) dokumentiert.
+The detailed source-sync workflow is documented in `SOURCE_SYNC_WORKFLOW.md`.
 
-Der vorgelagerte Workflow, der aktive Quellen aus `crawl_sources` liest und den Crawl-Workflow pro Quelle triggert, ist in [`CRAWL_DISPATCH_WORKFLOW.md`](CRAWL_DISPATCH_WORKFLOW.md) dokumentiert. Dort gehoert die Intervall- und Rate-Limit-Entscheidung hin.
+## Crawl Dispatch
 
-1. **Trigger** – Schedule (z. B. stündlich) oder Webhook „Run crawl“.
-2. **Data table → Get rows** – Tabelle `crawl_sources`, Filter `active` (wie von dir definiert).
-3. **Code (Python)** – `code_normalize_crawl_key.py` oder direkt `code_fetch_expand.py` (siehe `n8n/python/`).
-4. **Split in Batches** – optional, um Speicher/Timeouts zu begrenzen.
-5. **Data table → Get row** – Lookup in `article_enrichment` mit `article_id` (= `json.article.id`).
-6. **IF** – `exists($json.content_hash_match)` bzw. Vergleich Hash aus DB mit aktuellem Artikel-Hash.
-   - **true:** Enrichment aus der Zeile übernehmen, AI überspringen.
-   - **false:** Weiter zu AI.
-7. **AI** – Prompts siehe `AI_PROMPTS.md`.
-8. **Code** – JSON parsen, mit Artikel mergen (siehe `code_parse_ai_json.py`).
-9. **Data table → Insert or update row** – `article_enrichment` aktualisieren.
-10. **HTTP Request** – `POST {{$env.INFL0_BASE_URL}}/api/crawler/ingest`, Body aus `build_ingest_body`, Header mit API-Key.
+The dispatch workflow reads active sources, runs `plan_dispatch`, updates source state and only starts the child crawl workflow for due sources. Details are documented in `CRAWL_DISPATCH_WORKFLOW.md`.
+
+## Child Crawl Workflow
+
+Recommended node chain for one source:
+
+1. Trigger from the dispatch workflow or manual test input.
+2. `List Candidates` Python Code node.
+3. History lookup by `article_id`.
+4. Merge candidate and history result.
+5. `Filter Candidates` Python Code node.
+6. IF `candidate_decision == "fetch"`.
+7. `Fetch Detail` Python Code node.
+8. `Finalize Item` Python Code node.
+9. Existing history/content-hash check.
+10. `Limit LLM Items` Python Code node.
+11. AI enrichment in n8n.
+12. `build_ingest_body` Python Code node.
+13. `POST /api/crawler/ingest`.
+14. Aggregate all ending paths.
+15. `finalize_crawl_run`.
+16. Update source table.
+17. Send source health to infl0.
 
 ## Python in n8n
 
-- Repo **auf den n8n-Host mounten** (z. B. `/data/TopicKnowledgeCrawler`).
-- **`PYTHONPATH`** = Projektroot (Ordner, der `src/` enthält).
-- Im Code-Node: `sys.path.insert(0, "/data/TopicKnowledgeCrawler")` falls keine globale Env-Variable gesetzt ist.
-- Im **Docker-Image** von n8n die Pakete aus `n8n/requirements-n8n.txt` installieren.
+Prefer installing the package in the runner image with `pip install -e`. If that is not possible during development, set `PYTHONPATH` to the repository root and `src/` directory.
 
-## Bestehendes Repo
-
-- Crawl-Implementierung: weiterhin `src/crawler/fetchers/*`.
-- Paket `tkcrawler` (`src/tkcrawler/`): crawlKey, Data-Table-Zeile → Source, Fetch, infl0-Body; Crawl-Logik bleibt in `crawler` (`src/crawler/`).
-- `collector.py` / `summarizer.py` bleiben für **lokale** Läufe nutzbar; n8n ersetzt den Orchestrierungs- und LLM-Teil.
+The implementation path is `src/tkcrawler/steps/*`. The plain Python reference flow is `tkcrawler.pipeline`.

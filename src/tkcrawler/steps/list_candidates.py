@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 import feedparser
 from bs4 import BeautifulSoup
 
-from crawler.fetchers.html_fetcher import HtmlFetcher
+from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
 

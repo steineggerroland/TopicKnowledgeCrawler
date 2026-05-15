@@ -1,29 +1,36 @@
-# TopicKnowledgeCrawler → n8n
+# TopicKnowledgeCrawler for n8n
 
-Orchestrierung mit **n8n**: Quellen in einer **Data Table**, Zwischenstände in einer zweiten Tabelle (statt `data/summary_history.json`), **AI Nodes** für Zusammenfassung/Kategorien, **Python Code Nodes** für Fetch und infl0-Payload.
+n8n orchestrates the crawler flow: sources live in a Data Table, intermediate state lives in Data Tables, AI Nodes create summaries and categories, and Python Code nodes call the portable `tkcrawler.steps` functions.
 
-## Kurzstart
+## Quick Start
 
-1. Data Tables anlegen → [`docs/DATA_TABLES.md`](docs/DATA_TABLES.md)
-2. Workflow skizzieren → [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
-3. AI-Prompts → [`docs/AI_PROMPTS.md`](docs/AI_PROMPTS.md)
-4. Python-Skripte → [`python/README.md`](python/README.md)
-5. Workflow-Template importieren → [`workflows/crawl_to_infl0.template.json`](workflows/crawl_to_infl0.template.json)
-6. Docker/n8n: Crawler einbinden → [`DOCKER_CRAWLER.md`](DOCKER_CRAWLER.md) und [`docker-compose.server.example.yaml`](docker-compose.server.example.yaml)
-7. `requirements-n8n.txt` im **Python-Runner-Image** installieren (siehe `DOCKER_CRAWLER.md`).
-8. Python-Runner-Allowlist & `pip install -e` → [`docs/PYTHON_RUNNER_ALLOWLIST.md`](docs/PYTHON_RUNNER_ALLOWLIST.md).
+1. Create Data Tables, see `docs/DATA_TABLES.md`.
+2. Review the workflow overview, see `docs/WORKFLOW.md`.
+3. Configure AI prompts, see `docs/AI_PROMPTS.md`.
+4. Use Python snippets from `python/README.md` where useful.
+5. Build or configure the Python runner, see `DOCKER_CRAWLER.md` and `docker-compose.server.example.yaml`.
+6. Install `requirements-n8n.txt` in the Python runner image.
+7. Configure the runner allowlist and `pip install -e`, see `docs/PYTHON_RUNNER_ALLOWLIST.md`.
 
-## Python-Module im Repo
+## Python Modules
 
-Paket **`tkcrawler`** unter `src/tkcrawler/` (installiert mit Root-`pyproject.toml`):
+The installable package is `tkcrawler` under `src/tkcrawler/`.
 
-- `tkcrawler.crawl_key.normalize_feed_url` – analog infl0 `feed-url.ts`
-- `tkcrawler.datatable.row_to_source` – Data-Table-Zeile → Dict wie `sources.json`
-- `tkcrawler.fetch.fetch_entries_for_source` – nutzt Paket **`crawler`** (`src/crawler/…`)
-- `tkcrawler.infl0_payload` – `POST /api/crawler/ingest`
+Useful entry points:
 
-Tests: `pytest tests/test_tkcrawler.py`
+- `tkcrawler.crawl_key.normalize_feed_url`: normalize feed URLs like infl0 does.
+- `tkcrawler.datatable.row_to_source`: convert a Data Table row into a source dict.
+- `tkcrawler.steps.*`: portable steps for analysis, dispatch, candidate listing, detail fetch and finalization.
+- `tkcrawler.pipeline`: the same data flow as a plain Python reference pipeline.
+- `tkcrawler.fetch.fetch_entries_for_source`: small compatibility helper backed by `tkcrawler.pipeline`.
+- `tkcrawler.infl0_payload`: helpers for `POST /api/crawler/ingest`.
 
-## Lokaler Legacy-Pfad
+Run focused tests with:
 
-`python src/crawler/collector.py` und `summarizer.py` bleiben für lokale Läufe ohne n8n; für reine n8n-Betriebsweise entfällt die Nutzung von `summary_history.json`, wenn die Data Table `article_enrichment` die gleiche Rolle übernimmt.
+```bash
+pytest tests/test_tkcrawler.py tests/steps/test_steps.py
+```
+
+## Local Python Path
+
+The canonical implementation is `tkcrawler.steps`. n8n orchestrates these steps, but the same pipeline can run from plain Python or another flow system. See `../examples/python_step_flow.py` for a runnable example.

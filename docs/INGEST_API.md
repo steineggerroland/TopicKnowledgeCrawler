@@ -31,7 +31,7 @@ to this contract first.
 | `id` | string | Stable crawler-generated item id. |
 | `title` | string or null | Display title. |
 | `link` | string | Human-facing canonical item URL. |
-| `item_kind` | string | `article` or `episode`. Defaults to `article` for legacy payloads. |
+| `item_kind` | string | `article` or `episode`. Defaults to `article` for older payloads. |
 
 ## Common optional fields
 

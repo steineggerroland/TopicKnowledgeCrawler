@@ -1,10 +1,10 @@
-# Python Task Runner mit eingebautem TopicKnowledgeCrawler (editable install).
+# Python Task Runner with built-in TopicKnowledgeCrawler (editable install).
 #
-# Build aus dem Repo-Root (TopicKnowledgeCrawler):
+# Build from the repository root (TopicKnowledgeCrawler):
 #
 #   docker build -f n8n/docker/Dockerfile.task-runner-python.example -t n8n-runner-python:local .
 #
-# Optional: statt COPY — Build-Args setzen und unten die GIT-Zeilen aktivieren (Netzwerk beim Build).
+# Optional: instead of COPY, set build args and enable the GIT lines below (network during build).
 
 FROM n8nio/runners:stable
 # alpine 3.22, chromium 142.x — puppeteer compatibility
@@ -29,14 +29,14 @@ RUN chmod a+rx -R /usr/bin
 
 RUN cd /opt/runners/task-runner-javascript && pnpm add moment uuid tsdav node-fetch@2.7.0 node-ical vcard-parser
 
-# Basis-Zusatzpakete im Runner (Rest kommt über `pip install -e` aus pyproject.toml)
+# Additional base packages in the runner. The rest comes from pyproject.toml via `pip install -e`.
 RUN cd /opt/runners/task-runner-python && uv pip install numpy selenium trafilatura feedparser
 
-# Repo ins Image — Variante A: Build-Kontext = Repo-Root
+# Repository into the image, variant A: build context = repository root
 #COPY pyproject.toml README.md /opt/TopicKnowledgeCrawler/
 #COPY src /opt/TopicKnowledgeCrawler/src/
 
-# Variante B — statt COPY (auskommentieren): Clone beim Build
+# Variant B, instead of COPY: uncomment to clone during build
 ARG TKCRAWLER_GIT_URL=https://github.com/steineggerroland/TopicKnowledgeCrawler.git
 ARG TKCRAWLER_GIT_REF=main
 RUN apk add --no-cache git \

@@ -1,7 +1,7 @@
 # n8n → Code → Python
-# Baut den JSON-Body für POST /api/crawler/ingest.
+# Builds the JSON body for POST /api/crawler/ingest.
 #
-# Voraussetzung: `pip install -e` des Repos im Runner-Image.
+# Prerequisite: `pip install -e` for this repo in the runner image.
 
 from tkcrawler.infl0_payload import build_ingest_body
 
