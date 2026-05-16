@@ -564,7 +564,7 @@ def test_plan_dispatch_step_returns_envelope():
     assert result["items"][0]["should_dispatch"] is True
 
 
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_list_candidates_rss_without_detail_fetch(mock_parse):
     mock_parse.return_value.entries = [
         Mock(
@@ -595,7 +595,7 @@ def test_list_candidates_rss_without_detail_fetch(mock_parse):
     assert out[0]["candidate"]["has_feed_content"] is False
 
 
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_list_candidates_respects_max_entries(mock_parse):
     mock_parse.return_value.entries = [
         Mock(title="Article 1", link="https://example.com/1", summary="Summary 1"),
@@ -615,7 +615,7 @@ def test_list_candidates_respects_max_entries(mock_parse):
     assert out[0]["candidate"]["title"] == "Article 1"
 
 
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.podcast.feedparser.parse")
 def test_list_candidates_podcast_uses_feed_description(mock_parse):
     mock_parse.return_value.entries = [
         {
@@ -642,7 +642,7 @@ def test_list_candidates_podcast_uses_feed_description(mock_parse):
     assert out[0]["candidate"]["categories"] == ["architecture"]
 
 
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.podcast.feedparser.parse")
 def test_list_candidates_podcast_extracts_episode_metadata(mock_parse):
     mock_parse.return_value.entries = [
         {
@@ -701,7 +701,7 @@ def test_list_candidates_podcast_extracts_episode_metadata(mock_parse):
     assert candidate["transcript_url"] == "https://example.com/e42.txt"
 
 
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_list_candidates_step_returns_envelope(mock_parse):
     mock_parse.return_value.entries = [
         Mock(title="Article 1", link="https://example.com/1", summary="Summary 1"),
@@ -722,7 +722,7 @@ def test_list_candidates_step_returns_envelope(mock_parse):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value="""
     <html><body>
       <article><a href="/a1"><h2>Article 1</h2></a></article>
@@ -752,7 +752,7 @@ def test_list_candidates_html_from_listing(mock_fetch):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value="""
     <html><body>
       <article><a href="/a1?utm_source=x"><h2>Article 1</h2></a></article>
@@ -780,7 +780,7 @@ def test_list_candidates_html_deduplicates_links(mock_fetch):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value="""
     <html><body>
       <article><a href="/a1"><h2>Article 1</h2></a></article>
@@ -807,7 +807,7 @@ def test_list_candidates_html_respects_max_candidates(mock_fetch):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value="<html><body><article><a href='/a1'><h2>Article 1</h2></a></article></body></html>",
 )
 def test_list_candidates_html_passes_policy_user_agent(mock_fetch):
@@ -831,7 +831,7 @@ def test_list_candidates_html_passes_policy_user_agent(mock_fetch):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value=(
         "<html><body><div><a href='/a1'><h2>Article 1</h2></a></div>"
         "<div><a href='/a2'><h2>Article 2</h2></a></div></body></html>"
@@ -858,7 +858,7 @@ def test_list_candidates_html_accepts_anchor_as_article_block(mock_fetch):
 
 
 @patch(
-    "tkcrawler.steps.list_candidates.HtmlFetcher._fetch_html",
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
     return_value="<html><body><article><a href='/a1'><h2>Article 1</h2></a></article></body></html>",
 )
 def test_list_candidates_html_passes_fair_contact_headers(mock_fetch):

@@ -5,7 +5,7 @@ from tkcrawler.pipeline import crawl_source_ingest_bodies, crawl_source_items
 
 
 @patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_items_runs_step_flow(mock_parse, mock_markdown):
     mock_parse.return_value.entries = [
         {
@@ -34,7 +34,7 @@ def test_crawl_source_items_runs_step_flow(mock_parse, mock_markdown):
 
 
 @patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_items_uses_history_lookup(mock_parse, mock_markdown):
     mock_parse.return_value.entries = [
         {
@@ -63,7 +63,7 @@ def test_crawl_source_items_uses_history_lookup(mock_parse, mock_markdown):
 
 
 @patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
-@patch("tkcrawler.steps.list_candidates.feedparser.parse")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_ingest_bodies_returns_flat_infl0_payload(mock_parse, _mock_markdown):
     mock_parse.return_value.entries = [
         {
