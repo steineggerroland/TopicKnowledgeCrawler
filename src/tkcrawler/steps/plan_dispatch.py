@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from tkcrawler.enums import ConfigurationStatus, CrawlStatus, SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 DEFAULT_POLICY = {
@@ -30,7 +31,7 @@ def _parse_dt(value: Any) -> datetime | None:
         except ValueError as exc:
             raise StepError("invalid_datetime", f"Invalid datetime: {value}") from exc
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -97,13 +98,13 @@ def _parse_http_dt(value: Any) -> datetime | None:
     except (TypeError, ValueError):
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
 def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
-    now = _parse_dt(context.get("now")) or datetime.now(timezone.utc)
+    now = _parse_dt(context.get("now")) or datetime.now(UTC)
     dispatch_mode = str(context.get("dispatch_mode") or "scheduled")
     force = dispatch_mode == "force" or bool(context.get("force"))
 
@@ -113,7 +114,7 @@ def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None
 
     policy = _merge_policy(row)
     source_type = str(row.get("type") or "").strip()
-    source_status = str(row.get("source_status") or ("ready" if source_type else "needs_analysis")).strip()
+    source_status = str(row.get("source_status") or (SourceStatus.READY if source_type else SourceStatus.NEEDS_ANALYSIS)).strip()
     configuration_status = str(row.get("configuration_status") or "").strip()
 
     reason = "due"
@@ -122,9 +123,9 @@ def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None
     active = row.get("active", True)
     if active is False or str(active).lower() in {"false", "0", "no"}:
         should, reason = False, "inactive"
-    elif source_status != "ready":
+    elif source_status != SourceStatus.READY:
         should, reason = False, "source_not_ready"
-    elif source_type == "html" and configuration_status not in {"valid", "generated"}:
+    elif source_type == SourceType.HTML and configuration_status not in {ConfigurationStatus.VALID, ConfigurationStatus.GENERATED}:
         should, reason = False, "html_configuration_invalid"
     else:
         retry_until = _retry_after_until(row, now)
@@ -136,7 +137,7 @@ def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None
                 should, reason = False, "retry_after_active"
             elif (cache_until := _cache_until(row)) and cache_until > now:
                 should, reason = False, "cache_fresh"
-            elif str(row.get("last_crawl_status") or "").strip() == "running":
+            elif str(row.get("last_crawl_status") or "").strip() == CrawlStatus.RUNNING:
                 started = _parse_dt(row.get("last_crawl_started_at"))
                 stale_after = timedelta(minutes=float(policy.get("stale_running_minutes", 120)))
                 if started and started + stale_after <= now:

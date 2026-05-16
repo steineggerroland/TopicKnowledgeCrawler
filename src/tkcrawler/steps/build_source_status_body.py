@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from tkcrawler.enums import SourceHealthStatus
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 COUNT_FIELDS = {
@@ -41,7 +42,7 @@ def build_source_status_body_item(row: Mapping[str, Any]) -> dict[str, Any]:
     source_health_status = _optional_str(row.get("source_health_status"))
     source_health_reason = _optional_str(row.get("source_health_reason"))
     if _looks_never_crawled(row, crawl_result):
-        source_health_status = source_health_status or "pending"
+        source_health_status = source_health_status or SourceHealthStatus.PENDING
         source_health_reason = source_health_reason or "never_crawled"
 
     body: dict[str, Any] = {

@@ -9,6 +9,7 @@ from urllib.parse import urljoin
 import feedparser
 from bs4 import BeautifulSoup
 
+from tkcrawler.enums import ItemKind, SourceType
 from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
 from tkcrawler.steps._runtime import StepError, ok, split_input
@@ -241,7 +242,7 @@ def _list_feed_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             continue
         seen_links.add(link)
 
-        if source_type == "rss+podcast":
+        if source_type == SourceType.PODCAST:
             feed_content, feed_content_type = _podcast_best_content(entry)
             candidate_id = _podcast_id(entry, link=link, summary=feed_content)
             categories = _entry_get(entry, "tags", []) or []
@@ -261,7 +262,7 @@ def _list_feed_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "has_feed_content": bool(feed_content),
                 "feed_content": feed_content,
                 "feed_content_type": feed_content_type,
-                "item_kind": "episode",
+                "item_kind": ItemKind.EPISODE,
                 **_podcast_episode_fields(entry),
             }
         else:
@@ -278,7 +279,7 @@ def _list_feed_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
                 "has_feed_content": bool(feed_content),
                 "feed_content": feed_content,
                 "feed_content_type": feed_content_type,
-                "item_kind": "article",
+                "item_kind": ItemKind.ARTICLE,
             }
 
         out.append(
@@ -374,7 +375,7 @@ def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             "has_feed_content": False,
             "feed_content": None,
             "feed_content_type": None,
-            "item_kind": "article",
+            "item_kind": ItemKind.ARTICLE,
         }
         out.append(
             _candidate_row(
@@ -391,9 +392,9 @@ def _list_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
 
 def list_candidates_items(row: Mapping[str, Any]) -> list[dict[str, Any]]:
     source_type = str(row.get("type") or "").strip()
-    if source_type in {"rss", "rss+podcast"}:
+    if source_type in {SourceType.RSS, SourceType.PODCAST}:
         return _list_feed_candidates(row)
-    if source_type == "html":
+    if source_type == SourceType.HTML:
         return _list_html_candidates(row)
     raise StepError(
         "unsupported_source_type",

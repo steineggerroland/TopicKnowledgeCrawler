@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tkcrawler.steps.build_ingest_body import build_ingest_body_item
@@ -31,7 +31,7 @@ def crawl_source_items(
     `build_ingest_body_item`, just like n8n does.
     """
     context = dict(context or {})
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
     out: list[dict[str, Any]] = []
 
     for candidate_row in list_candidates_items(source):

@@ -4,6 +4,12 @@ import json
 from collections.abc import Mapping
 from typing import Any
 
+from tkcrawler.enums import (
+    ConfigurationStatus,
+    CrawlStatus,
+    SourceHealthStatus,
+    SourceStatus,
+)
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
 
 
@@ -44,42 +50,42 @@ def derive_source_health_item(row: Mapping[str, Any]) -> dict[str, Any]:
 def _health(row: Mapping[str, Any], detected: Mapping[str, Any]) -> tuple[str, str]:
     active = row.get("active", True)
     if active is False or str(active).lower() in {"false", "0", "no"}:
-        return "paused", "inactive"
+        return SourceHealthStatus.PAUSED, "inactive"
 
     source_status = str(row.get("source_status") or "").strip()
     configuration_status = str(row.get("configuration_status") or "").strip()
-    if source_status in {"needs_analysis", "configuration_invalid"}:
-        return "needs_setup", source_status
-    if configuration_status in {"missing", "invalid"}:
-        return "needs_setup", f"configuration_{configuration_status}"
-    if source_status == "analysis_failed":
-        return "failing", "analysis_failed"
+    if source_status in {SourceStatus.NEEDS_ANALYSIS, SourceStatus.CONFIGURATION_INVALID}:
+        return SourceHealthStatus.NEEDS_SETUP, source_status
+    if configuration_status in {ConfigurationStatus.MISSING, ConfigurationStatus.INVALID}:
+        return SourceHealthStatus.NEEDS_SETUP, f"configuration_{configuration_status}"
+    if source_status == SourceStatus.ANALYSIS_FAILED:
+        return SourceHealthStatus.FAILING, "analysis_failed"
 
     http_status = _int(detected.get("http_status"))
     if http_status in {403, 429}:
-        return "blocked", f"http_{http_status}"
+        return SourceHealthStatus.BLOCKED, f"http_{http_status}"
     if http_status >= 500:
-        return "degraded", f"http_{http_status}"
+        return SourceHealthStatus.DEGRADED, f"http_{http_status}"
     if detected.get("retry_after_seconds") or detected.get("retry_after_until"):
-        return "paused", "retry_after_active"
+        return SourceHealthStatus.PAUSED, "retry_after_active"
 
     last_status = str(row.get("last_crawl_status") or "").strip()
     if not last_status:
-        return "pending", "never_crawled"
-    if last_status == "failed":
-        return "failing", "last_crawl_failed"
-    if last_status == "partial_failed":
-        return "degraded", "last_crawl_partial_failed"
+        return SourceHealthStatus.PENDING, "never_crawled"
+    if last_status == CrawlStatus.FAILED:
+        return SourceHealthStatus.FAILING, "last_crawl_failed"
+    if last_status == CrawlStatus.PARTIAL_FAILED:
+        return SourceHealthStatus.DEGRADED, "last_crawl_partial_failed"
 
     candidate_count = _int(row.get("crawl_candidate_count"))
     processed_count = _int(row.get("crawl_processed_count"))
     unchanged_count = _int(row.get("crawl_unchanged_count"))
     skipped_count = _int(row.get("crawl_skipped_count"))
     if candidate_count == 0:
-        return "quiet", "no_candidates"
+        return SourceHealthStatus.QUIET, "no_candidates"
     if skipped_count >= candidate_count and processed_count == 0 and unchanged_count == 0:
-        return "quiet", "all_candidates_skipped"
-    return "healthy", "recent_success"
+        return SourceHealthStatus.QUIET, "all_candidates_skipped"
+    return SourceHealthStatus.HEALTHY, "recent_success"
 
 
 def _operator_attention(
@@ -88,7 +94,7 @@ def _operator_attention(
     status: str,
     reason: str,
 ) -> tuple[bool, str | None]:
-    if status in {"failing", "blocked"}:
+    if status in {SourceHealthStatus.FAILING, SourceHealthStatus.BLOCKED}:
         return True, reason
     if _int(row.get("consecutive_error_count")) >= 2:
         return True, "repeated_errors"

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
+from tkcrawler.enums import ConfigurationStatus, SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, split_input
 from tkcrawler.steps.list_candidates import list_candidates_items
 
@@ -14,21 +15,21 @@ def validate_source_configuration_item(
 ) -> dict[str, Any]:
     context = context or {}
     source_type = str(row.get("type") or "").strip()
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
 
-    if source_type in {"rss", "rss+podcast"}:
+    if source_type in {SourceType.RSS, SourceType.PODCAST}:
         return {
             **dict(row),
-            "source_status": "ready",
+            "source_status": SourceStatus.READY,
             "configuration_status": None,
             "configuration_error": None,
             "configuration_checked_at": now,
         }
-    if source_type != "html":
+    if source_type != SourceType.HTML:
         return {
             **dict(row),
-            "source_status": "analysis_failed",
-            "configuration_status": "invalid",
+            "source_status": SourceStatus.ANALYSIS_FAILED,
+            "configuration_status": ConfigurationStatus.INVALID,
             "configuration_error": f"Unsupported source type: {source_type or 'missing'}",
             "configuration_checked_at": now,
         }
@@ -47,8 +48,8 @@ def validate_source_configuration_item(
 
     return {
         **dict(row),
-        "source_status": "ready",
-        "configuration_status": "valid",
+        "source_status": SourceStatus.READY,
+        "configuration_status": ConfigurationStatus.VALID,
         "configuration_error": None,
         "configuration_checked_at": now,
         "sample_candidate_count": sample_count,
@@ -67,8 +68,8 @@ def _with_sample_limit(row: Mapping[str, Any], context: Mapping[str, Any]) -> di
 def _invalid(row: Mapping[str, Any], now: str, error: str, *, sample_count: int | None = None) -> dict[str, Any]:
     out = {
         **dict(row),
-        "source_status": "configuration_invalid",
-        "configuration_status": "invalid",
+        "source_status": SourceStatus.CONFIGURATION_INVALID,
+        "configuration_status": ConfigurationStatus.INVALID,
         "configuration_error": error,
         "configuration_checked_at": now,
     }

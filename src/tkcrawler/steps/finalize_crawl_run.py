@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
+from tkcrawler.enums import CrawlStatus
 from tkcrawler.steps._runtime import StepError, ok, split_input
 
 COUNT_FIELDS = {
@@ -19,7 +20,7 @@ COUNT_FIELDS = {
 
 def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
     crawl_key = row.get("crawl_key") or row.get("crawlKey") or context.get("crawl_key")
     if not crawl_key:
         raise StepError("missing_crawl_key", "Crawl run summary needs crawl_key")
@@ -31,13 +32,13 @@ def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] |
     total_count = counts["candidate_count"] if counts["candidate_count"] > 0 else terminal_count
 
     if error_count == 0:
-        status = "success"
+        status = CrawlStatus.SUCCESS
         error = None
     elif success_count > 0:
-        status = "partial_failed"
+        status = CrawlStatus.PARTIAL_FAILED
         error = _summary_error(counts)
     else:
-        status = "failed"
+        status = CrawlStatus.FAILED
         error = _summary_error(counts)
 
     result = {
@@ -46,7 +47,7 @@ def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] |
     }
 
     previous_errors = _int_or_zero(row.get("consecutive_error_count"))
-    consecutive_errors = 0 if status == "success" else previous_errors + 1
+    consecutive_errors = 0 if status == CrawlStatus.SUCCESS else previous_errors + 1
 
     out = {
         **dict(row),
@@ -64,7 +65,7 @@ def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] |
         "crawl_llm_failed_count": counts["llm_failed_count"],
         "consecutive_error_count": consecutive_errors,
     }
-    if status == "success":
+    if status == CrawlStatus.SUCCESS:
         out["last_successful_crawl_at"] = now
     return out
 
