@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from tkcrawler.steps._runtime import StepError
+from tkcrawler._runtime import StepError
 
 
 def entry_get(entry: Any, name: str, default: Any = None) -> Any:

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Synthetic Dev Blog</title>
+    <link>https://synthetic.example.com</link>
+    <description>A synthetic RSS feed for testing</description>
+    <item>
+      <title>First Synthetic Article</title>
+      <link>https://synthetic.example.com/articles/first</link>
+      <description>This is the summary of the first synthetic article about testing.</description>
+      <author>Ada Testwriter</author>
+      <pubDate>Mon, 12 May 2026 08:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Second Synthetic Article</title>
+      <link>https://synthetic.example.com/articles/second</link>
+      <description>This is the summary of the second synthetic article about quality.</description>
+      <author>Bob Testwriter</author>
+      <pubDate>Tue, 13 May 2026 10:30:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Third Synthetic Article</title>
+      <link>https://synthetic.example.com/articles/third</link>
+      <description>This is the summary of the third synthetic article about architecture.</description>
+      <pubDate>Wed, 14 May 2026 14:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>

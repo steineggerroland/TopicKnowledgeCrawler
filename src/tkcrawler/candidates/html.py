@@ -18,7 +18,7 @@ from tkcrawler.candidates._common import (
 from tkcrawler.enums import ItemKind
 from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
-from tkcrawler.steps._runtime import StepError
+from tkcrawler._runtime import StepError
 
 
 def _configuration(row: Mapping[str, Any]) -> dict[str, Any]:
