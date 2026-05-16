@@ -96,6 +96,17 @@ n8n orchestration is documented in [`n8n/README.md`](n8n/README.md). The n8n
 workflows use the same `*_item(...)` functions from `tkcrawler.steps` that a
 plain Python flow would use.
 
+## Development
+
+- Local environment template: [`.env.example`](.env.example)
+- Contributor guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
+
+## Workflow Diagram
+
+The crawler workflow is documented as domain steps so it can be implemented by
+n8n, the CLI or another orchestrator. See
+[`docs/WORKFLOW_DIAGRAM.md`](docs/WORKFLOW_DIAGRAM.md) for the Mermaid diagram.
+
 ## infl0 Contracts
 
 - Ingest payload: [`docs/INGEST_API.md`](docs/INGEST_API.md)
@@ -107,3 +118,4 @@ plain Python flow would use.
 - Target architecture: [`docs/TARGET_ARCHITECTURE.md`](docs/TARGET_ARCHITECTURE.md)
 - Current migration notes: [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md)
 - Planned changes: [`docs/PLANNED_CHANGES.md`](docs/PLANNED_CHANGES.md)
+- Architecture decisions: [`docs/adr/`](docs/adr/)
