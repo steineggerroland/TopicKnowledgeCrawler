@@ -10,6 +10,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
+from tkcrawler._runtime import StepError
 from tkcrawler.candidates._common import (
     candidate_row,
     max_candidates,
@@ -18,7 +19,6 @@ from tkcrawler.candidates._common import (
 from tkcrawler.enums import ItemKind
 from tkcrawler.html import HtmlFetcher
 from tkcrawler.steps._headers import request_headers
-from tkcrawler._runtime import StepError
 
 
 def _configuration(row: Mapping[str, Any]) -> dict[str, Any]:

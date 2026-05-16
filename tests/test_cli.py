@@ -7,8 +7,6 @@ import os
 import subprocess
 import sys
 
-import pytest
-
 
 def _run_step(step_name: str, payload: dict | None = None, *, stdin_text: str | None = None) -> subprocess.CompletedProcess:
     """Helper to invoke run_step as a subprocess."""

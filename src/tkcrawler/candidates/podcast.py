@@ -8,6 +8,7 @@ from typing import Any
 
 import feedparser
 
+from tkcrawler._runtime import StepError
 from tkcrawler.candidates._common import (
     candidate_row,
     entry_get,
@@ -16,7 +17,6 @@ from tkcrawler.candidates._common import (
 )
 from tkcrawler.enums import ItemKind
 from tkcrawler.html import HtmlFetcher
-from tkcrawler._runtime import StepError
 
 
 def _podcast_id(entry: Any, link: str | None = None, summary: str | None = None) -> str:
