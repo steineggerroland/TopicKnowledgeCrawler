@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+     xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Synthetic Tech Podcast</title>
+    <link>https://synthetic.example.com/podcast</link>
+    <description>A synthetic podcast feed for testing</description>
+    <itunes:author>Synthetic Hosts</itunes:author>
+    <item>
+      <title>Episode 1: Getting Started</title>
+      <link>https://synthetic.example.com/podcast/ep1</link>
+      <description>In this episode we discuss getting started with testing.</description>
+      <enclosure url="https://synthetic.example.com/audio/ep1.mp3" type="audio/mpeg" length="12345678"/>
+      <itunes:duration>25:30</itunes:duration>
+      <itunes:episode>1</itunes:episode>
+      <itunes:season>1</itunes:season>
+      <itunes:author>Ada Host</itunes:author>
+      <pubDate>Mon, 05 May 2026 06:00:00 +0000</pubDate>
+    </item>
+    <item>
+      <title>Episode 2: Deep Dive</title>
+      <link>https://synthetic.example.com/podcast/ep2</link>
+      <description>A deeper look into domain driven design patterns.</description>
+      <enclosure url="https://synthetic.example.com/audio/ep2.mp3" type="audio/mpeg" length="23456789"/>
+      <itunes:duration>1:02:15</itunes:duration>
+      <itunes:episode>2</itunes:episode>
+      <itunes:season>1</itunes:season>
+      <itunes:author>Bob Host</itunes:author>
+      <pubDate>Mon, 12 May 2026 06:00:00 +0000</pubDate>
+    </item>
+  </channel>
+</rss>
