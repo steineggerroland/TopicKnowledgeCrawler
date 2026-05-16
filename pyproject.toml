@@ -7,7 +7,7 @@ name = "tkcrawler"
 version = "0.1.0"
 description = "TopicKnowledgeCrawler: portable RSS/HTML/podcast crawler steps for infl0 and workflow systems"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "beautifulsoup4>=4.12",
   "feedparser>=6.0",
@@ -27,7 +27,7 @@ where = ["src"]
 
 [tool.ruff]
 src = ["src", "tests"]
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

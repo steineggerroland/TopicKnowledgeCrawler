@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -30,7 +30,7 @@ def _parse_dt(value: Any) -> datetime | None:
             except (TypeError, ValueError) as exc:
                 raise StepError("invalid_datetime", f"Invalid datetime: {value}") from exc
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -71,7 +71,7 @@ def filter_candidate_item(row: Mapping[str, Any], context: Mapping[str, Any] | N
     if not isinstance(candidate, Mapping):
         raise StepError("missing_candidate", "Item needs candidate object")
 
-    now = _parse_dt(context.get("now")) or datetime.now(timezone.utc)
+    now = _parse_dt(context.get("now")) or datetime.now(UTC)
     refresh_window_days = _refresh_window_days(row)
     refresh_cutoff = now - timedelta(days=refresh_window_days)
     history = _history_from_row(row)

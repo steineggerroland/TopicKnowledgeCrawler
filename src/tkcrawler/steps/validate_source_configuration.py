@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tkcrawler.enums import ConfigurationStatus, SourceStatus, SourceType
@@ -15,7 +15,7 @@ def validate_source_configuration_item(
 ) -> dict[str, Any]:
     context = context or {}
     source_type = str(row.get("type") or "").strip()
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
 
     if source_type in {SourceType.RSS, SourceType.PODCAST}:
         return {

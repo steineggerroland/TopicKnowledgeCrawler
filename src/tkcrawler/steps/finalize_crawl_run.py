@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tkcrawler.enums import CrawlStatus
@@ -20,7 +20,7 @@ COUNT_FIELDS = {
 
 def finalize_crawl_run_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
     crawl_key = row.get("crawl_key") or row.get("crawlKey") or context.get("crawl_key")
     if not crawl_key:
         raise StepError("missing_crawl_key", "Crawl run summary needs crawl_key")

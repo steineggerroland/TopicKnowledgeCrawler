@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import requests
@@ -27,7 +27,7 @@ def prepare_html_analysis_item(
     timeout = float(context.get("timeout_seconds", row.get("timeout_seconds", 10)))
     verify = context.get("verify", row.get("verify", True))
     max_chars = int(context.get("max_html_chars", DEFAULT_MAX_HTML_CHARS))
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
 
     try:
         response = requests.get(

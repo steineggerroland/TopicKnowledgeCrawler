@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from tkcrawler.enums import ConfigurationStatus, SourceStatus, SourceType
@@ -12,7 +12,7 @@ from tkcrawler.steps._runtime import StepError, ok, split_input
 
 def apply_html_analysis_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
 
     try:
         analysis = _analysis_object(row)

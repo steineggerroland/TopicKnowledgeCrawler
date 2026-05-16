@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from tkcrawler.enums import ConfigurationStatus, CrawlStatus, SourceStatus, SourceType
@@ -31,7 +31,7 @@ def _parse_dt(value: Any) -> datetime | None:
         except ValueError as exc:
             raise StepError("invalid_datetime", f"Invalid datetime: {value}") from exc
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -98,13 +98,13 @@ def _parse_http_dt(value: Any) -> datetime | None:
     except (TypeError, ValueError):
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
 def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
-    now = _parse_dt(context.get("now")) or datetime.now(timezone.utc)
+    now = _parse_dt(context.get("now")) or datetime.now(UTC)
     dispatch_mode = str(context.get("dispatch_mode") or "scheduled")
     force = dispatch_mode == "force" or bool(context.get("force"))
 

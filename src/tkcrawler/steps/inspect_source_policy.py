@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -24,7 +24,7 @@ def inspect_source_policy_item(
     if not url:
         raise StepError("missing_url", "Source needs url or feedUrl")
 
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
     timeout = float(context.get("timeout_seconds", row.get("timeout_seconds", 10)))
     verify = context.get("verify", row.get("verify", True))
 
@@ -131,10 +131,10 @@ def _retry_after_seconds(value: str, now: str) -> int | None:
     except (TypeError, ValueError):
         return None
     if retry_at.tzinfo is None:
-        retry_at = retry_at.replace(tzinfo=timezone.utc)
+        retry_at = retry_at.replace(tzinfo=UTC)
     now_dt = datetime.fromisoformat(now.replace("Z", "+00:00"))
     if now_dt.tzinfo is None:
-        now_dt = now_dt.replace(tzinfo=timezone.utc)
+        now_dt = now_dt.replace(tzinfo=UTC)
     return max(int((retry_at - now_dt).total_seconds()), 0)
 
 

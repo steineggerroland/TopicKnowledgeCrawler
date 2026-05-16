@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import feedparser
@@ -20,7 +20,7 @@ def analyze_source_item(row: Mapping[str, Any], context: Mapping[str, Any] | Non
 
     timeout = float(context.get("timeout_seconds", row.get("timeout_seconds", 10)))
     verify = context.get("verify", row.get("verify", True))
-    now = str(context.get("now") or datetime.now(timezone.utc).isoformat())
+    now = str(context.get("now") or datetime.now(UTC).isoformat())
 
     try:
         response = requests.get(
