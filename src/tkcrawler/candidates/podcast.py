@@ -28,7 +28,7 @@ def _podcast_id(entry: Any, link: str | None = None, summary: str | None = None)
     return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
-def _podcast_best_content(entry: Any) -> tuple[str | None, str | None]:
+def _podcast_rich_content(entry: Any) -> tuple[str | None, str | None]:
     content_fields = entry_get(entry, "content", [])
     if isinstance(content_fields, list):
         for content_type in ("text/html", "application/xhtml+xml", "text/plain"):
@@ -37,12 +37,27 @@ def _podcast_best_content(entry: Any) -> tuple[str | None, str | None]:
                     return field.get("value"), content_type
                 if hasattr(field, "get") and field.get("type") == content_type:
                     return field.get("value"), content_type
+    return None, None
+
+
+def _podcast_summary(entry: Any) -> Any:
     return (
-        entry_get(entry, "description")
+        entry_get(entry, "itunes_summary")
         or entry_get(entry, "itunes:summary")
-        or entry_get(entry, "summary"),
-        "description",
+        or entry_get(entry, "summary")
     )
+
+
+def _podcast_feed_text(entry: Any) -> dict[str, Any]:
+    rich_content, rich_content_type = _podcast_rich_content(entry)
+    shownotes = entry_get(entry, "description")
+    summary = _podcast_summary(entry)
+    return {
+        "feed_content": rich_content,
+        "feed_content_type": rich_content_type,
+        "podcast_shownotes": shownotes,
+        "podcast_summary": summary,
+    }
 
 
 def _duration_seconds(value: Any) -> int | None:
@@ -179,14 +194,19 @@ def build_podcast_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             continue
         seen_links.add(link)
 
-        feed_content, feed_content_type = _podcast_best_content(entry)
-        candidate_id = _podcast_id(entry, link=link, summary=feed_content)
+        feed_text = _podcast_feed_text(entry)
+        text_for_id = (
+            feed_text["feed_content"]
+            or feed_text["podcast_shownotes"]
+            or feed_text["podcast_summary"]
+        )
+        candidate_id = _podcast_id(entry, link=link, summary=text_for_id)
         categories = entry_get(entry, "tags", []) or []
         candidate: dict[str, Any] = {
             "id": candidate_id,
             "link": link,
             "title": entry_get(entry, "title"),
-            "summary": feed_content or "",
+            "summary": text_for_id or "",
             "author": (
                 entry_get(entry, "itunes:author")
                 or entry_get(entry, "author")
@@ -195,9 +215,8 @@ def build_podcast_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
             "publishedAt": entry_get(entry, "pubDate") or entry_get(entry, "published"),
             "updatedAt": entry_get(entry, "updated"),
             "categories": [tag.get("term") for tag in categories if hasattr(tag, "get") and tag.get("term")],
-            "has_feed_content": bool(feed_content),
-            "feed_content": feed_content,
-            "feed_content_type": feed_content_type,
+            "has_feed_content": any(feed_text.values()),
+            **feed_text,
             "item_kind": ItemKind.EPISODE,
             **_podcast_episode_fields(entry),
         }

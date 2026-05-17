@@ -70,7 +70,7 @@ You are a creative summarization assistant and expert content analyst.
 
 ### User Message
 
-Use the finalized item content from the previous node, for example `{{ $json.article.content_md }}`. For podcast episodes, this may contain feed shownotes, transcript-derived text or a detail-page fallback.
+Use the finalized item content from the previous node, for example `{{ $json.article.content_md }}`. For podcast episodes, this may contain rich feed content, shownotes plus summary, or a detail-page fallback. Transcript URLs remain metadata unless a separate workflow fetches transcript text.
 
 ```text
 You are an expert content analyst and a content creator who transforms educational content into engaging and well-organized summaries. Your task is to analyze the following content item and:

@@ -29,27 +29,78 @@ EPISODE_FIELDS = (
 )
 
 
+def _markdown_from_text(value: Any) -> str:
+    markdown = text.convert_from_html_to_markdown(f"<html><body>{value}</body></html>")
+    if not markdown:
+        markdown = str(value)
+    return markdown.strip()
+
+
+def _with_title(title: Any, markdown: str) -> str:
+    if title:
+        return f"# {title}\n\n{markdown}"
+    return markdown
+
+
 def _markdown_from_feed_content(candidate: Mapping[str, Any]) -> tuple[str, str]:
     title = candidate.get("title") or ""
     feed_content = candidate.get("feed_content") or candidate.get("summary") or ""
     if not feed_content:
         raise StepError("missing_feed_content", "Candidate has no feed content")
 
-    markdown = text.convert_from_html_to_markdown(f"<html><body>{feed_content}</body></html>")
-    if not markdown:
-        markdown = str(feed_content)
+    markdown = _markdown_from_text(feed_content)
     if title:
         return f"# {title}\n\n{markdown}", markdown
     return markdown, markdown
 
 
+def _meaningfully_distinct(left: str, right: str) -> bool:
+    def normalized(value: str) -> str:
+        return " ".join(value.casefold().split())
+
+    return bool(normalized(left) and normalized(right) and normalized(left) != normalized(right))
+
+
+def _podcast_feed_content(candidate: Mapping[str, Any]) -> tuple[str, str | None]:
+    title = candidate.get("title") or ""
+    rich_content = candidate.get("feed_content")
+    if rich_content:
+        markdown = _markdown_from_text(rich_content)
+        return _with_title(title, markdown), markdown
+
+    parts: list[str] = []
+    shownotes_md = None
+    shownotes = candidate.get("podcast_shownotes")
+    if shownotes:
+        shownotes_md = _markdown_from_text(shownotes)
+        if shownotes_md:
+            parts.append(shownotes_md)
+
+    summary = candidate.get("podcast_summary") or candidate.get("summary")
+    if summary:
+        summary_md = _markdown_from_text(summary)
+        if summary_md and all(_meaningfully_distinct(existing, summary_md) for existing in parts):
+            parts.append(summary_md)
+
+    if not parts:
+        raise StepError("missing_feed_content", "Candidate has no feed content")
+
+    body = "\n\n".join(parts)
+    return _with_title(title, body), body if shownotes_md or len(parts) > 1 else parts[0]
+
+
 def _podcast_content(candidate: Mapping[str, Any], link: str, *, verify: Any, headers: Mapping[str, str]) -> tuple[str, str | None]:
-    if candidate.get("has_feed_content") or candidate.get("summary"):
-        return _markdown_from_feed_content(candidate)
+    if (
+        candidate.get("feed_content")
+        or candidate.get("podcast_shownotes")
+        or candidate.get("podcast_summary")
+        or candidate.get("summary")
+    ):
+        return _podcast_feed_content(candidate)
     try:
         return HtmlFetcher.generate_markdown_from_url(link, verify=verify, headers=dict(headers)), None
     except Exception:
-        return _markdown_from_feed_content(candidate)
+        return _podcast_feed_content(candidate)
 
 
 def _seconds(value: Any) -> int | None:

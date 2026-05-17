@@ -80,10 +80,17 @@ Parsed chapters are normalized to this shape:
 ]
 ```
 
-Podcast detail fetching prefers rich feed content/description for shownotes.
-If no usable feed content is available, the crawler falls back to the episode
-detail page. The LLM still receives `content_md`; episodes may additionally
-carry `shownotes_md` when the source feed provided shownotes directly.
+Podcast detail fetching builds `content_md` from feed text before trying the
+episode detail page:
+
+1. rich feed content, usually `content:encoded`,
+2. otherwise description as shownotes,
+3. plus `itunes:summary`/`summary` when it is present and distinct from the
+   shownotes,
+4. detail page fallback only when the feed has no usable text.
+
+The LLM receives the resulting `content_md`; episodes may additionally carry
+`shownotes_md` for compatibility with existing podcast rendering.
 
 ## n8n workflow note
 

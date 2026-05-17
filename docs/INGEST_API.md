@@ -91,6 +91,12 @@ direct media link and chapter navigation.
 `link` is still the human-facing episode page. `media_url` is the direct media
 asset and should not replace `link` in labels or canonical URLs.
 
+For episodes, `content_md` is assembled from feed text before any detail-page
+fallback. Rich feed content such as `content:encoded` wins. If rich content is
+missing, the crawler uses RSS description as shownotes and appends
+`itunes:summary`/`summary` when distinct. The episode page is fetched only when
+the feed does not provide usable text.
+
 Chapter objects use this normalized shape:
 
 | Field | Type | Description |

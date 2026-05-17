@@ -638,8 +638,60 @@ def test_list_candidates_podcast_uses_feed_description(mock_parse):
     assert len(out) == 1
     assert out[0]["candidate"]["item_kind"] == "episode"
     assert out[0]["candidate"]["has_feed_content"] is True
-    assert out[0]["candidate"]["feed_content"] == "<p>Shownotes</p>"
+    assert out[0]["candidate"]["feed_content"] is None
+    assert out[0]["candidate"]["podcast_shownotes"] == "<p>Shownotes</p>"
+    assert out[0]["candidate"]["summary"] == "<p>Shownotes</p>"
     assert out[0]["candidate"]["categories"] == ["architecture"]
+
+
+@patch("tkcrawler.candidates.podcast.feedparser.parse")
+def test_list_candidates_podcast_preserves_rich_content_and_summary(mock_parse):
+    mock_parse.return_value.entries = [
+        {
+            "title": "Episode 1",
+            "link": "https://example.com/e1",
+            "content": [{"type": "text/html", "value": "<p>Rich content</p>"}],
+            "description": "<p>Shownotes</p>",
+            "itunes_summary": "<p>Summary</p>",
+        }
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/podcast",
+            "type": "rss+podcast",
+            "url": "https://example.com/podcast",
+        }
+    )
+
+    candidate = out[0]["candidate"]
+    assert candidate["feed_content"] == "<p>Rich content</p>"
+    assert candidate["feed_content_type"] == "text/html"
+    assert candidate["podcast_shownotes"] == "<p>Shownotes</p>"
+    assert candidate["podcast_summary"] == "<p>Summary</p>"
+    assert candidate["summary"] == "<p>Rich content</p>"
+
+
+@patch("tkcrawler.candidates.podcast.feedparser.parse")
+def test_list_candidates_podcast_supports_colon_itunes_summary(mock_parse):
+    mock_parse.return_value.entries = [
+        {
+            "title": "Episode 1",
+            "link": "https://example.com/e1",
+            "description": "<p>Shownotes</p>",
+            "itunes:summary": "<p>iTunes summary</p>",
+        }
+    ]
+
+    out = list_candidates_items(
+        {
+            "crawl_key": "https://example.com/podcast",
+            "type": "rss+podcast",
+            "url": "https://example.com/podcast",
+        }
+    )
+
+    assert out[0]["candidate"]["podcast_summary"] == "<p>iTunes summary</p>"
 
 
 @patch("tkcrawler.candidates.podcast.feedparser.parse")
@@ -1139,6 +1191,78 @@ def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
     assert out["article"]["episode_number"] == 1
     assert out["article"]["season_number"] == 2
     assert out["article"]["chapters_url"] == "https://example.com/chapters.json"
+
+
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+def test_fetch_detail_podcast_rich_content_wins(mock_markdown):
+    mock_markdown.side_effect = ["Rich content"]
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "<p>Candidate summary</p>",
+                "feed_content": "<p>Rich content</p>",
+                "podcast_shownotes": "<p>Shownotes</p>",
+                "podcast_summary": "<p>Summary</p>",
+                "item_kind": "episode",
+            },
+        }
+    )
+
+    assert out["article"]["content_md"] == "# Episode\n\nRich content"
+    assert out["article"]["shownotes_md"] == "Rich content"
+    assert mock_markdown.call_count == 1
+
+
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+def test_fetch_detail_podcast_combines_shownotes_and_summary(mock_markdown):
+    mock_markdown.side_effect = ["Shownotes", "Summary"]
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "podcast_shownotes": "<p>Shownotes</p>",
+                "podcast_summary": "<p>Summary</p>",
+                "item_kind": "episode",
+            },
+        }
+    )
+
+    assert out["article"]["content_md"] == "# Episode\n\nShownotes\n\nSummary"
+    assert out["article"]["shownotes_md"] == "Shownotes\n\nSummary"
+
+
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+def test_fetch_detail_podcast_deduplicates_shownotes_and_summary(mock_markdown):
+    mock_markdown.side_effect = ["Same text", "same text"]
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "podcast_shownotes": "<p>Same text</p>",
+                "podcast_summary": "<p>same text</p>",
+                "item_kind": "episode",
+            },
+        }
+    )
+
+    assert out["article"]["content_md"] == "# Episode\n\nSame text"
+    assert out["article"]["shownotes_md"] == "Same text"
 
 
 @patch("tkcrawler.steps.fetch_detail.requests.get")
