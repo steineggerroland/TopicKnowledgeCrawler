@@ -2,6 +2,9 @@ beautifulsoup4==4.14.3
 feedparser==6.0.12
 fuzzywuzzy==0.18.0
 pytest==8.4.2
+pytest-mock==3.15.1
+hypothesis==6.148.7
+ruff==0.14.8
 python-dotenv==1.2.2
 requests==2.33.1
 tldextract==5.3.1
