@@ -13,6 +13,17 @@ def _without_known(data: Mapping[str, Any], known: set[str]) -> dict[str, Any]:
     return {key: value for key, value in data.items() if key not in known}
 
 
+def _parse_source_type(value: Any) -> SourceType | str:
+    """Parse a known source type; keep unknown values as str for step-level errors."""
+    raw = str(value or "").strip()
+    if not raw:
+        return SourceType.UNKNOWN
+    try:
+        return SourceType(raw)
+    except ValueError:
+        return raw
+
+
 @dataclass(slots=True)
 class Source:
     crawl_key: str
@@ -30,7 +41,7 @@ class Source:
         url = str(row.get("url") or row.get("feedUrl") or "")
         return cls(
             crawl_key=crawl_key,
-            type=SourceType(str(row.get("type") or SourceType.UNKNOWN)),
+            type=_parse_source_type(row.get("type")),
             url=url,
             name=str(row["name"]) if row.get("name") is not None else None,
             source_status=SourceStatus(str(row["source_status"])) if row.get("source_status") else None,

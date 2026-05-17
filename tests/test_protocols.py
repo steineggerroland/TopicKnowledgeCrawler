@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from tkcrawler.fetchers import get_fetcher
 from tkcrawler.models import Article, Candidate, Source
 from tkcrawler.protocols import Fetcher
 
@@ -10,6 +11,11 @@ class DummyFetcher:
 
     def fetch_detail(self, source: Source, candidate: Candidate) -> Article:
         return Article(id=candidate.id, link=candidate.link, content_md="# Body")
+
+
+def test_production_rss_fetcher_satisfies_protocol():
+    fetcher = get_fetcher("rss")
+    assert isinstance(fetcher, Fetcher)
 
 
 def test_fetcher_protocol_accepts_structural_adapter():

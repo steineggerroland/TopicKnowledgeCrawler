@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from tkcrawler.models import Article, Candidate, Source
 
 
+@runtime_checkable
 class Fetcher(Protocol):
     """Adapter contract for source families that can list and fetch items."""
 

@@ -39,8 +39,8 @@ def history_lookup(article_id: str) -> dict | None:
 
 
 def main() -> None:
-    with patch("tkcrawler.steps.list_candidates.feedparser.parse") as parse_feed, patch(
-        "tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url",
+    with patch("tkcrawler.candidates.rss.feedparser.parse") as parse_feed, patch(
+        "tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url",
         return_value="# Example Article\n\nThis is the fetched article body.",
     ):
         parse_feed.return_value.entries = [

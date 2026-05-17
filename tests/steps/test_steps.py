@@ -568,6 +568,19 @@ def test_plan_dispatch_step_returns_envelope():
     assert result["items"][0]["should_dispatch"] is True
 
 
+def test_list_candidates_rejects_unsupported_source_type():
+    with pytest.raises(StepError) as exc:
+        list_candidates_items(
+            {
+                "crawl_key": "https://example.com/feed",
+                "type": "telegram",
+                "url": "https://example.com/feed",
+            }
+        )
+
+    assert exc.value.code == "unsupported_source_type"
+
+
 @patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_list_candidates_rss_without_detail_fetch(mock_parse):
     mock_parse.return_value.entries = [
@@ -1153,7 +1166,7 @@ def test_filter_candidate_step_returns_envelope():
     assert result["items"][0]["candidate_decision"] == "fetch"
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 def test_fetch_detail_rss_loads_detail_page(mock_markdown):
     out = fetch_detail_item(
         {
@@ -1178,7 +1191,7 @@ def test_fetch_detail_rss_loads_detail_page(mock_markdown):
     assert out["content_md"] == "# Article\n\nBody"
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 def test_fetch_detail_passes_verify_context(mock_markdown):
     fetch_detail_item(
         {
@@ -1200,7 +1213,7 @@ def test_fetch_detail_passes_verify_context(mock_markdown):
     )
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 def test_fetch_detail_passes_policy_user_agent(mock_markdown):
     fetch_detail_item(
         {
@@ -1222,7 +1235,7 @@ def test_fetch_detail_passes_policy_user_agent(mock_markdown):
     )
 
 
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Shownotes")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown", return_value="Shownotes")
 def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
     out = fetch_detail_item(
         {
@@ -1264,7 +1277,7 @@ def test_fetch_detail_podcast_prefers_feed_content(mock_markdown):
     assert out["article"]["chapters_url"] == "https://example.com/chapters.json"
 
 
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown")
 def test_fetch_detail_podcast_rich_content_wins(mock_markdown):
     mock_markdown.side_effect = ["Rich content"]
 
@@ -1290,7 +1303,7 @@ def test_fetch_detail_podcast_rich_content_wins(mock_markdown):
     assert mock_markdown.call_count == 1
 
 
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown")
 def test_fetch_detail_podcast_combines_shownotes_and_summary(mock_markdown):
     mock_markdown.side_effect = ["Shownotes", "Summary"]
 
@@ -1313,7 +1326,7 @@ def test_fetch_detail_podcast_combines_shownotes_and_summary(mock_markdown):
     assert out["article"]["shownotes_md"] == "Shownotes\n\nSummary"
 
 
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown")
 def test_fetch_detail_podcast_deduplicates_shownotes_and_summary(mock_markdown):
     mock_markdown.side_effect = ["Same text", "same text"]
 
@@ -1336,8 +1349,8 @@ def test_fetch_detail_podcast_deduplicates_shownotes_and_summary(mock_markdown):
     assert out["article"]["shownotes_md"] == "Same text"
 
 
-@patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Shownotes")
+@patch("tkcrawler.fetchers._detail.requests.get")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown", return_value="Shownotes")
 def test_fetch_detail_podcast_fetches_chapters(mock_markdown, mock_get):
     response = Mock()
     response.json.return_value = {
@@ -1390,8 +1403,8 @@ def test_fetch_detail_podcast_fetches_chapters(mock_markdown, mock_get):
     ]
 
 
-@patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
+@patch("tkcrawler.fetchers._detail.requests.get")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown", return_value="Summary only")
 def test_fetch_detail_podcast_keeps_chapter_fetch_error(mock_markdown, mock_get):
     mock_get.side_effect = RuntimeError("chapters unavailable")
 
@@ -1416,8 +1429,8 @@ def test_fetch_detail_podcast_keeps_chapter_fetch_error(mock_markdown, mock_get)
     assert "chapters unavailable" in out["article"]["chapters_fetch_error"]
 
 
-@patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
+@patch("tkcrawler.fetchers._detail.requests.get")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown", return_value="Summary only")
 def test_fetch_detail_podcast_fetches_plain_transcript(mock_markdown, mock_get):
     response = Mock()
     response.text = "WEBVTT\n\n00:00:00.000 --> 00:00:03.000\nWelcome.\n\n00:00:03.000 --> 00:00:05.000\nMain topic."
@@ -1452,8 +1465,8 @@ def test_fetch_detail_podcast_fetches_plain_transcript(mock_markdown, mock_get):
     assert out["article"]["transcript_url"] == "https://example.com/e1.vtt"
 
 
-@patch("tkcrawler.steps.fetch_detail.requests.get")
-@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
+@patch("tkcrawler.fetchers._detail.requests.get")
+@patch("tkcrawler.fetchers._detail.text.convert_from_html_to_markdown", return_value="Summary only")
 def test_fetch_detail_podcast_keeps_transcript_fetch_error(mock_markdown, mock_get):
     mock_get.side_effect = RuntimeError("transcript unavailable")
 
@@ -1477,7 +1490,7 @@ def test_fetch_detail_podcast_keeps_transcript_fetch_error(mock_markdown, mock_g
     assert "transcript unavailable" in out["article"]["transcript_fetch_error"]
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Detail\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Detail\n\nBody")
 def test_fetch_detail_podcast_uses_detail_page_when_no_feed_summary(mock_markdown):
     out = fetch_detail_item(
         {
@@ -1513,7 +1526,7 @@ def test_fetch_detail_rejects_skipped_candidate():
         raise AssertionError("Expected exception")
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article")
 def test_fetch_detail_step_returns_envelope(mock_markdown):
     result = fetch_detail_step(
         {
