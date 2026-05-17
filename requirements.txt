@@ -6,7 +6,7 @@ pytest-mock==3.15.1
 hypothesis==6.148.7
 ruff==0.14.8
 python-dotenv==1.2.2
-requests==2.33.1
+requests==2.34.2
 tldextract==5.3.1
 trafilatura==2.0.0
 ollama==0.6.2
