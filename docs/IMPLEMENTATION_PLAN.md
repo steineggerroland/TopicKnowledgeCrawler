@@ -128,9 +128,10 @@ The broad black-box fetch step has been replaced by explicit steps:
 3. `filter_candidates`
 4. `fetch_detail`
 5. `finalize_item`
-6. optional LLM enrichment in n8n
-7. `build_ingest_body`
-8. `finalize_crawl_run`
+6. optional `segment_content` for long-form Markdown
+7. optional LLM enrichment in n8n
+8. `build_ingest_body`
+9. `finalize_crawl_run`
 
 A pure Python reference flow is available in `tkcrawler.pipeline` and demonstrated in `examples/python_step_flow.py`.
 

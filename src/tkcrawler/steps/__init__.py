@@ -15,6 +15,7 @@ from tkcrawler.steps.list_candidates import list_candidates_step
 from tkcrawler.steps.normalize_source import normalize_source_step
 from tkcrawler.steps.plan_dispatch import plan_dispatch_step
 from tkcrawler.steps.prepare_html_analysis import prepare_html_analysis_step
+from tkcrawler.steps.segment_content import segment_content_step
 from tkcrawler.steps.validate_source_configuration import (
     validate_source_configuration_step,
 )
@@ -35,6 +36,7 @@ STEP_REGISTRY = {
     "normalize_source": normalize_source_step,
     "plan_dispatch": plan_dispatch_step,
     "prepare_html_analysis": prepare_html_analysis_step,
+    "segment_content": segment_content_step,
     "validate_source_configuration": validate_source_configuration_step,
 }
 
@@ -55,5 +57,6 @@ __all__ = [
     "normalize_source_step",
     "plan_dispatch_step",
     "prepare_html_analysis_step",
+    "segment_content_step",
     "validate_source_configuration_step",
 ]

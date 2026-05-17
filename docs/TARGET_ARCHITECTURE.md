@@ -60,12 +60,13 @@ The workflow should be described in domain steps that can be implemented in n8n 
 10. `filter_candidates`: compare candidates with history and policy.
 11. `fetch_detail`: fetch and extract exactly one article or episode.
 12. `finalize_item`: add metadata, content hash and source metadata.
-13. `limit_llm_items`: cap expensive enrichment work per run.
-14. `enrich_item`: run LLM enrichment in n8n.
-15. `build_ingest_body`: build the infl0 ingest body.
-16. `send_to_infl0`: call infl0.
-17. `finalize_crawl_run`: aggregate run counters and health state.
-18. `send_source_status`: publish source status to infl0.
+13. `segment_content`: optionally split long-form Markdown into stable sections.
+14. `limit_llm_items`: cap expensive enrichment work per run.
+15. `enrich_item`: run LLM enrichment in n8n.
+16. `build_ingest_body`: build the infl0 ingest body.
+17. `send_to_infl0`: call infl0.
+18. `finalize_crawl_run`: aggregate run counters and health state.
+19. `send_source_status`: publish source status to infl0.
 
 n8n is one concrete implementation of these steps. Another system should be able to implement the same steps and data contracts.
 

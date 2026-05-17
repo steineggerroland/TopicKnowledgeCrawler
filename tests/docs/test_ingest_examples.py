@@ -17,6 +17,8 @@ COMMON_FIELDS = {
     "source_type",
     "tld",
     "content_hash",
+    "parent_item_id",
+    "position",
     "teaser",
     "summary_long",
     "category",
@@ -54,11 +56,16 @@ def _load(name: str) -> dict:
 def test_ingest_examples_are_documented_item_kinds():
     article = _load("article.json")
     episode = _load("episode.json")
+    section = _load("section.json")
 
     assert article["item_kind"] == "article"
     assert episode["item_kind"] == "episode"
+    assert section["item_kind"] == "section"
     assert set(article) <= COMMON_FIELDS
     assert set(episode) >= EPISODE_FIELDS
+    assert set(section) <= COMMON_FIELDS
+    assert section["parent_item_id"]
+    assert section["position"] > 0
     assert episode["media_url"]
     assert episode["duration_seconds"] > 0
     assert episode["chapters"][0]["start_seconds"] == 0
@@ -70,7 +77,7 @@ def test_ingest_schema_matches_example_contract():
 
     assert schema["additionalProperties"] is False
     assert set(schema["required"]) == {"crawlKey", "id", "title", "link", "item_kind"}
-    assert set(schema["properties"]["item_kind"]["enum"]) == {"article", "episode"}
+    assert set(schema["properties"]["item_kind"]["enum"]) == {"article", "episode", "section"}
 
     for path in EXAMPLE_DIR.glob("*.json"):
         payload = json.loads(path.read_text(encoding="utf-8"))

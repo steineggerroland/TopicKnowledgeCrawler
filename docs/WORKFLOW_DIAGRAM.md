@@ -196,6 +196,7 @@ These are the workflow steps that call TopicKnowledgeCrawler code directly:
 | Crawl Source | `filter_candidates` | `tkcrawler.steps.filter_candidates.filter_candidate_item` |
 | Crawl Source | `fetch_detail` | `tkcrawler.steps.fetch_detail.fetch_detail_item` |
 | Crawl Source | `finalize_item` | `tkcrawler.steps.finalize_item.finalize_item` |
+| Crawl Source | `segment_content` | `tkcrawler.steps.segment_content.segment_content_item` |
 | Crawl Source | `limit_llm_items` | `tkcrawler.steps.limit_llm_items.limit_llm_items` |
 | Crawl Source | `build_ingest_body` | `tkcrawler.steps.build_ingest_body.build_ingest_body_item` or `tkcrawler.infl0_payload.build_ingest_body` |
 | Crawl Source | `finalize_crawl_run` | `tkcrawler.steps.finalize_crawl_run.finalize_crawl_run_item` |

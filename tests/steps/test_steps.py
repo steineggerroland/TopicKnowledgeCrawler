@@ -49,6 +49,7 @@ from tkcrawler.steps.prepare_html_analysis import (
     prepare_html_analysis_item,
     prepare_html_analysis_step,
 )
+from tkcrawler.steps.segment_content import segment_content_item, segment_content_step
 from tkcrawler.steps.validate_source_configuration import (
     validate_source_configuration_item,
     validate_source_configuration_step,
@@ -1526,6 +1527,66 @@ def test_fetch_detail_step_returns_envelope(mock_markdown):
 
     assert result["ok"] is True
     assert result["items"][0]["article"]["id"] == "a1"
+
+
+def test_segment_content_splits_markdown_headings():
+    item = {
+        "article": {
+            "id": "long-1",
+            "title": "Long Form",
+            "link": "https://example.com/long",
+            "summary": "A long item",
+            "author": "Ada",
+            "publishedAt": "2026-05-10T08:00:00+00:00",
+            "updatedAt": None,
+            "source_type": "html",
+            "content_md": "# Intro\n\nOpening text.\n\n## Part One\n\nBody.\n\n## Part Two\n\nMore body.",
+        }
+    }
+
+    out = segment_content_item(item)
+
+    assert out["segment_count"] == 3
+    assert [segment["title"] for segment in out["segments"]] == ["Intro", "Part One", "Part Two"]
+    assert out["segments"][0]["item_kind"] == "section"
+    assert out["segments"][0]["parent_item_id"] == "long-1"
+    assert out["segments"][0]["position"] == 1
+    assert out["segments"][0]["link"] == "https://example.com/long"
+    assert out["segments"][1]["content_md"] == "## Part One\n\nBody."
+    assert out["segments"][0]["id"] == segment_content_item(item)["segments"][0]["id"]
+
+
+def test_segment_content_returns_single_segment_without_headings():
+    out = segment_content_item(
+        {
+            "id": "plain-1",
+            "title": "Plain Long Form",
+            "link": "https://example.com/plain",
+            "content_md": "No headings here, just one long text.",
+        }
+    )
+
+    assert out["segment_count"] == 1
+    assert out["segments"][0]["title"] == "Plain Long Form"
+    assert out["segments"][0]["content_md"] == "No headings here, just one long text."
+
+
+def test_segment_content_step_returns_envelope():
+    result = segment_content_step(
+        {
+            "item": {
+                "article": {
+                    "id": "long-1",
+                    "title": "Long Form",
+                    "link": "https://example.com/long",
+                    "content_md": "# Intro\n\nBody.",
+                }
+            }
+        }
+    )
+
+    assert result["ok"] is True
+    assert result["items"][0]["segment_count"] == 1
 
 
 def test_finalize_crawl_run_marks_success_from_aggregates():

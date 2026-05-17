@@ -19,6 +19,7 @@ Current item kinds:
 
 - `article`: RSS/Atom articles and HTML pages.
 - `episode`: podcast episodes from `rss+podcast` feeds.
+- `section`: stable Markdown sections split from long-form parent items.
 
 Unknown future item kinds should not be invented by infl0. They should be added
 to this contract first.
@@ -31,7 +32,7 @@ to this contract first.
 | `id` | string | Stable crawler-generated item id. |
 | `title` | string or null | Display title. |
 | `link` | string | Human-facing canonical item URL. |
-| `item_kind` | string | `article` or `episode`. Defaults to `article` for older payloads. |
+| `item_kind` | string | `article`, `episode` or `section`. Defaults to `article` for older payloads. |
 
 ## Common optional fields
 
@@ -45,6 +46,8 @@ to this contract first.
 | `source_type` | string or null | Source type such as `rss`, `html`, `rss+podcast`. |
 | `tld` | string or null | Registered source domain. |
 | `content_hash` | string or null | Hash over `content_md`. |
+| `parent_item_id` | string or null | Parent content id for split sections. |
+| `position` | number or null | 1-based position for split sections. |
 | `teaser` | string or null | LLM teaser. Applies to all item kinds. |
 | `summary_long` | string or null | LLM summary. Applies to all item kinds. |
 | `category` | string[] or null | LLM categories. |
@@ -117,12 +120,23 @@ Example:
 
 [`docs/examples/ingest/episode.json`](examples/ingest/episode.json)
 
+## Section payload
+
+Sections use `item_kind: "section"` and are produced by `segment_content` for
+PDF/EPUB-style or otherwise long-form content. They preserve the parent
+canonical `link`, use their own stable `id`, and point back to the source item
+with `parent_item_id`.
+
+Example:
+
+[`docs/examples/ingest/section.json`](examples/ingest/section.json)
+
 ## JSON Schema
 
 The machine-readable contract lives at
 [`docs/schemas/ingest-item.schema.json`](schemas/ingest-item.schema.json).
 
-The schema allows both `article` and `episode` payloads. It is intentionally
+The schema allows `article`, `episode` and `section` payloads. It is intentionally
 strict at the top level so that accidental n8n-internal fields do not silently
 become public API.
 

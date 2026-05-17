@@ -1,0 +1,27 @@
+{
+  "crawlKey": "https://example.com/long-form",
+  "id": "section-01hxyz",
+  "item_kind": "section",
+  "parent_item_id": "article-01hxyz",
+  "position": 2,
+  "title": "Finding Context Boundaries",
+  "link": "https://example.com/articles/designing-useful-boundaries",
+  "summary": "A section extracted from a long-form item.",
+  "author": "Ada Example",
+  "publishedAt": "2026-05-10T08:00:00+00:00",
+  "updatedAt": "2026-05-10T09:15:00+00:00",
+  "content_md": "## Finding Context Boundaries\n\nA stable section body split from the parent Markdown document.",
+  "source_type": "html",
+  "tld": "example.com",
+  "content_hash": "9c7e7c0f2f564eb59b1934a77485f8c1",
+  "teaser": "A focused slice of a longer article.",
+  "summary_long": "This section explains how teams can notice useful context boundaries inside a larger document.",
+  "category": [
+    "expert opinions"
+  ],
+  "tags": [
+    "domain-driven design",
+    "bounded contexts"
+  ],
+  "seriousness_rating": "medium"
+}

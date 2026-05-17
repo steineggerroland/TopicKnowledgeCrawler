@@ -52,3 +52,4 @@ class CrawlStatus(StrEnum):
 class ItemKind(StrEnum):
     ARTICLE = "article"
     EPISODE = "episode"
+    SECTION = "section"

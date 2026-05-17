@@ -62,6 +62,7 @@ class TestStrEnumBehavior:
     def test_item_kind_is_string(self):
         assert ItemKind.ARTICLE == "article"
         assert ItemKind.EPISODE == "episode"
+        assert ItemKind.SECTION == "section"
 
 
 class TestJsonSerialization:

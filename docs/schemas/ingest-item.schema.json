@@ -23,7 +23,8 @@
     "item_kind": {
       "enum": [
         "article",
-        "episode"
+        "episode",
+        "section"
       ]
     },
     "title": {
@@ -83,6 +84,15 @@
         "string",
         "null"
       ]
+    },
+    "parent_item_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "position": {
+      "$ref": "#/$defs/nullableNonNegativeInteger"
     },
     "teaser": {
       "type": [
