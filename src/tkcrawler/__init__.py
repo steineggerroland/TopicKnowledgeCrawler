@@ -6,3 +6,13 @@ Example imports::
     from tkcrawler.crawl_key import normalize_feed_url
     from tkcrawler.fetch import fetch_entries_for_source
 """
+
+from tkcrawler.models import Article, Candidate, Source
+from tkcrawler.protocols import Fetcher
+
+__all__ = [
+    "Article",
+    "Candidate",
+    "Fetcher",
+    "Source",
+]
