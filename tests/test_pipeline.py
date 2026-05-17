@@ -4,7 +4,7 @@ from tkcrawler.fetch import fetch_entries_for_source
 from tkcrawler.pipeline import crawl_source_ingest_bodies, crawl_source_items
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 @patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_items_runs_step_flow(mock_parse, mock_markdown):
     mock_parse.return_value.entries = [
@@ -33,7 +33,7 @@ def test_crawl_source_items_runs_step_flow(mock_parse, mock_markdown):
     mock_markdown.assert_called_once()
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 @patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_items_uses_history_lookup(mock_parse, mock_markdown):
     mock_parse.return_value.entries = [
@@ -62,7 +62,7 @@ def test_crawl_source_items_uses_history_lookup(mock_parse, mock_markdown):
     mock_markdown.assert_not_called()
 
 
-@patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Article\n\nBody")
 @patch("tkcrawler.candidates.rss.feedparser.parse")
 def test_crawl_source_ingest_bodies_returns_flat_infl0_payload(mock_parse, _mock_markdown):
     mock_parse.return_value.entries = [
@@ -88,6 +88,35 @@ def test_crawl_source_ingest_bodies_returns_flat_infl0_payload(mock_parse, _mock
     assert bodies[0]["crawlKey"] == "https://example.com/feed.xml"
     assert bodies[0]["item_kind"] == "article"
     assert bodies[0]["content_md"] == "# Article\n\nBody"
+
+
+@patch("tkcrawler.fetchers._detail.HtmlFetcher.generate_markdown_from_url", return_value="# Intro\n\n## One\n\nA\n\n## Two\n\nB")
+@patch("tkcrawler.candidates.rss.feedparser.parse")
+def test_crawl_source_ingest_bodies_segments_longform(mock_parse, _mock_markdown):
+    mock_parse.return_value.entries = [
+        {
+            "title": "Long Article",
+            "link": "https://example.com/long",
+            "summary": "Summary",
+            "published": "2026-05-10T08:00:00+00:00",
+        }
+    ]
+
+    bodies = crawl_source_ingest_bodies(
+        {
+            "crawl_key": "https://example.com/feed.xml",
+            "type": "rss",
+            "url": "https://example.com/feed.xml",
+            "source_status": "ready",
+        },
+        context={"now": "2026-05-13T10:00:00+00:00"},
+        segment_longform=True,
+        min_sections=2,
+    )
+
+    assert len(bodies) >= 2
+    assert all(body.get("item_kind") == "section" for body in bodies)
+    assert all(body.get("parent_item_id") for body in bodies)
 
 
 @patch("tkcrawler.fetch.crawl_source_items")

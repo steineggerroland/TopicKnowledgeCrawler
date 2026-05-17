@@ -9,6 +9,8 @@ from tkcrawler.steps.fetch_detail import fetch_detail_item
 from tkcrawler.steps.filter_candidates import filter_candidate_item
 from tkcrawler.steps.finalize_item import finalize_item
 from tkcrawler.steps.list_candidates import list_candidates_items
+from tkcrawler.steps.segment_content import segment_content_item
+from tkcrawler.types import Infl0IngestBody
 
 HistoryLookup = Callable[[str], Mapping[str, Any] | None]
 
@@ -59,15 +61,48 @@ def crawl_source_items(
     return out
 
 
+def _ingest_bodies_from_finalized(
+    items: list[dict[str, Any]],
+    *,
+    segment_longform: bool = False,
+    min_sections: int = 2,
+) -> list[Infl0IngestBody]:
+    bodies: list[Infl0IngestBody] = []
+    for item in items:
+        if not item.get("article") or item.get("fetch_detail_error"):
+            continue
+
+        if segment_longform:
+            segmented = segment_content_item(item)
+            segment_count = int(segmented.get("segment_count") or 0)
+            if segment_count >= min_sections:
+                for segment in segmented.get("segments") or []:
+                    segment_row = {**item, "article": dict(segment)}
+                    finalized = finalize_item(segment_row)
+                    bodies.append(build_ingest_body_item(finalized)["infl0_ingest_body"])
+                continue
+
+        bodies.append(build_ingest_body_item(item)["infl0_ingest_body"])
+    return bodies
+
+
 def crawl_source_ingest_bodies(
     source: Mapping[str, Any],
     *,
     history_lookup: HistoryLookup | None = None,
     context: Mapping[str, Any] | None = None,
-) -> list[dict[str, Any]]:
-    """Run the step flow and return infl0 ingest bodies for fetched items."""
-    bodies: list[dict[str, Any]] = []
-    for item in crawl_source_items(source, history_lookup=history_lookup, context=context):
-        if item.get("article") and not item.get("fetch_detail_error"):
-            bodies.append(build_ingest_body_item(item)["infl0_ingest_body"])
-    return bodies
+    segment_longform: bool = False,
+    min_sections: int = 2,
+) -> list[Infl0IngestBody]:
+    """Run the step flow and return infl0 ingest bodies for fetched items.
+
+    When ``segment_longform`` is true and Markdown splits into at least
+    ``min_sections`` headings, each section is finalized and emitted as its own
+    ingest body (``item_kind: section``). Otherwise one body is built per item.
+    """
+    items = crawl_source_items(source, history_lookup=history_lookup, context=context)
+    return _ingest_bodies_from_finalized(
+        items,
+        segment_longform=segment_longform,
+        min_sections=min_sections,
+    )

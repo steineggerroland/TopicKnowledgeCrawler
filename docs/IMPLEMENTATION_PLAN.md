@@ -135,6 +135,12 @@ The broad black-box fetch step has been replaced by explicit steps:
 
 A pure Python reference flow is available in `tkcrawler.pipeline` and demonstrated in `examples/python_step_flow.py`.
 
+`crawl_source_ingest_bodies(..., segment_longform=True, min_sections=2)` optionally runs `segment_content` before building ingest payloads for long-form Markdown.
+
+Source-family adapters live in `tkcrawler.fetchers` (`RssFetcher`, `PodcastFetcher`, `HtmlListingFetcher`). Steps convert dict rows to `Source` / `Candidate` / `Article` at boundaries.
+
+CLI chain test: `tests/test_cli_integration.py`.
+
 ## Next Implementation Phases
 
 ### Dispatch and Policy

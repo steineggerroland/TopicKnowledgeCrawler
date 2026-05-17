@@ -134,12 +134,13 @@ The Python layer should contain reusable logic:
 - normalization,
 - source analysis,
 - policy and dispatch decisions,
-- candidate listing,
-- detail extraction,
+- candidate listing and detail extraction through **source-family fetchers** (`tkcrawler.fetchers`, implementing `Fetcher` with typed `Source` / `Candidate` / `Article` at boundaries),
 - finalization,
 - payload construction,
 - source health derivation,
 - parser and adapter helpers.
+
+`tkcrawler.pipeline.crawl_source_ingest_bodies` optionally splits long-form Markdown via `segment_content` when `segment_longform=True`.
 
 It should not contain workflow state persistence, n8n Data Table persistence, LLM provider orchestration, or infl0 feed ranking logic.
 
