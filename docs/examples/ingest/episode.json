@@ -60,5 +60,7 @@
   ],
   "chapters_fetch_error": null,
   "transcript_url": "https://example.com/podcast/episode-42.transcript.txt",
-  "transcript_type": "text/plain"
+  "transcript_type": "text/plain",
+  "transcript_md": "Welcome to the episode.\n\nToday we talk about bounded contexts in practice.",
+  "transcript_fetch_error": null
 }

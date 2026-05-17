@@ -42,6 +42,8 @@ EPISODE_FIELDS = {
     "chapters_fetch_error",
     "transcript_url",
     "transcript_type",
+    "transcript_md",
+    "transcript_fetch_error",
 }
 
 

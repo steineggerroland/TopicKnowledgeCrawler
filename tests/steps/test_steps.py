@@ -1415,6 +1415,67 @@ def test_fetch_detail_podcast_keeps_chapter_fetch_error(mock_markdown, mock_get)
     assert "chapters unavailable" in out["article"]["chapters_fetch_error"]
 
 
+@patch("tkcrawler.steps.fetch_detail.requests.get")
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
+def test_fetch_detail_podcast_fetches_plain_transcript(mock_markdown, mock_get):
+    response = Mock()
+    response.text = "WEBVTT\n\n00:00:00.000 --> 00:00:03.000\nWelcome.\n\n00:00:03.000 --> 00:00:05.000\nMain topic."
+    response.headers = {"content-type": "text/vtt"}
+    response.raise_for_status.return_value = None
+    mock_get.return_value = response
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "Summary",
+                "item_kind": "episode",
+                "transcript_url": "https://example.com/e1.vtt",
+                "transcript_type": "text/vtt",
+            },
+        },
+        {"verify": "/etc/ssl/certs/ca-certificates.crt"},
+    )
+
+    mock_get.assert_called_once_with(
+        "https://example.com/e1.vtt",
+        timeout=20,
+        verify="/etc/ssl/certs/ca-certificates.crt",
+        headers={},
+    )
+    assert out["article"]["transcript_md"] == "Welcome.\nMain topic."
+    assert out["article"]["transcript_url"] == "https://example.com/e1.vtt"
+
+
+@patch("tkcrawler.steps.fetch_detail.requests.get")
+@patch("tkcrawler.steps.fetch_detail.text.convert_from_html_to_markdown", return_value="Summary only")
+def test_fetch_detail_podcast_keeps_transcript_fetch_error(mock_markdown, mock_get):
+    mock_get.side_effect = RuntimeError("transcript unavailable")
+
+    out = fetch_detail_item(
+        {
+            "source_type": "rss+podcast",
+            "candidate_decision": "fetch",
+            "candidate": {
+                "id": "e1",
+                "title": "Episode",
+                "link": "https://example.com/e1",
+                "summary": "Summary",
+                "item_kind": "episode",
+                "transcript_url": "https://example.com/e1.txt",
+                "transcript_type": "text/plain",
+            },
+        }
+    )
+
+    assert out["article"]["shownotes_md"] == "Summary only"
+    assert "transcript unavailable" in out["article"]["transcript_fetch_error"]
+
+
 @patch("tkcrawler.steps.fetch_detail.HtmlFetcher.generate_markdown_from_url", return_value="# Detail\n\nBody")
 def test_fetch_detail_podcast_uses_detail_page_when_no_feed_summary(mock_markdown):
     out = fetch_detail_item(

@@ -59,6 +59,8 @@ fields when present:
 | `chapters_fetch_error` | Error string when chapter fetching fails. |
 | `transcript_url` | Transcript document URL when advertised. |
 | `transcript_type` | Transcript MIME type. |
+| `transcript_md` | Transcript text normalized to Markdown/plain text when fetch succeeds. |
+| `transcript_fetch_error` | Error string when transcript fetching fails. |
 
 `link` remains the human-facing episode page. `media_url` is the direct media
 asset and should not replace `link` in UI labels.
@@ -90,7 +92,10 @@ episode detail page:
 4. detail page fallback only when the feed has no usable text.
 
 The LLM receives the resulting `content_md`; episodes may additionally carry
-`shownotes_md` for compatibility with existing podcast rendering.
+`shownotes_md` for compatibility with existing podcast rendering. Transcript
+text is metadata in this phase: when `transcript_url` can be fetched, the
+crawler stores `transcript_md` beside the episode but does not merge it into
+`content_md`.
 
 ## n8n workflow note
 

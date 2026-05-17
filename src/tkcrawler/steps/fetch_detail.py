@@ -180,6 +180,67 @@ def _fetch_chapters(candidate: Mapping[str, Any], *, verify: Any, headers: Mappi
         return [], str(exc)
 
 
+def _plain_transcript(raw: str) -> str:
+    lines = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped == "WEBVTT":
+            continue
+        if stripped.isdigit() or "-->" in stripped:
+            continue
+        lines.append(stripped)
+    return "\n".join(lines).strip()
+
+
+def _transcript_text_from_json(payload: Any) -> str:
+    if isinstance(payload, str):
+        return payload
+    if isinstance(payload, list):
+        return "\n".join(
+            part
+            for item in payload
+            if (part := _transcript_text_from_json(item))
+        ).strip()
+    if isinstance(payload, Mapping):
+        for field in ("transcript", "text", "body"):
+            value = payload.get(field)
+            if isinstance(value, str):
+                return value
+        for field in ("segments", "items", "captions"):
+            value = payload.get(field)
+            if isinstance(value, list):
+                return _transcript_text_from_json(value)
+    return ""
+
+
+def _transcript_markdown(response: requests.Response, transcript_type: str | None) -> str:
+    media_type = (transcript_type or response.headers.get("content-type") or "").casefold()
+    if "json" in media_type:
+        markdown = _transcript_text_from_json(response.json())
+        if not markdown:
+            raise ValueError("Unsupported transcript JSON shape")
+        return markdown.strip()
+
+    raw = response.text
+    if "html" in media_type:
+        markdown = text.convert_from_html_to_markdown(raw)
+        return (markdown or raw).strip()
+    return _plain_transcript(raw)
+
+
+def _fetch_transcript(candidate: Mapping[str, Any], *, verify: Any, headers: Mapping[str, str]) -> tuple[str | None, str | None]:
+    url = str(candidate.get("transcript_url") or "").strip()
+    if not url:
+        return None, None
+    try:
+        response = requests.get(url, timeout=20, verify=verify, headers=dict(headers))
+        response.raise_for_status()
+        transcript_md = _transcript_markdown(response, candidate.get("transcript_type"))
+        return transcript_md or None, None
+    except Exception as exc:
+        return None, str(exc)
+
+
 def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
     context = context or {}
     candidate = row.get("candidate")
@@ -235,6 +296,11 @@ def fetch_detail_item(row: Mapping[str, Any], context: Mapping[str, Any] | None 
             article["chapters"] = chapters
         if chapters_error:
             article["chapters_fetch_error"] = chapters_error
+        transcript_md, transcript_error = _fetch_transcript(candidate, verify=verify, headers=headers)
+        if transcript_md:
+            article["transcript_md"] = transcript_md
+        if transcript_error:
+            article["transcript_fetch_error"] = transcript_error
 
     return {
         **dict(row),

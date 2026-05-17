@@ -87,6 +87,8 @@ direct media link and chapter navigation.
 | `chapters_fetch_error` | string or null | Non-fatal chapter fetch/parse error. |
 | `transcript_url` | string or null | Transcript document URL when advertised. |
 | `transcript_type` | string or null | Transcript MIME type. |
+| `transcript_md` | string or null | Transcript text normalized to Markdown/plain text when fetched. |
+| `transcript_fetch_error` | string or null | Non-fatal transcript fetch/parse error. |
 
 `link` is still the human-facing episode page. `media_url` is the direct media
 asset and should not replace `link` in labels or canonical URLs.
@@ -96,6 +98,11 @@ fallback. Rich feed content such as `content:encoded` wins. If rich content is
 missing, the crawler uses RSS description as shownotes and appends
 `itunes:summary`/`summary` when distinct. The episode page is fetched only when
 the feed does not provide usable text.
+
+Transcripts are optional metadata for this phase. `transcript_md` is stored
+beside the episode when `transcript_url` can be fetched, but it is not merged
+into `content_md`; enrichment should treat `content_md` as the primary summary
+input and use transcripts only when a workflow explicitly opts into that.
 
 Chapter objects use this normalized shape:
 

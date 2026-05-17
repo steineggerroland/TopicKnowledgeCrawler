@@ -208,6 +208,18 @@
         "string",
         "null"
       ]
+    },
+    "transcript_md": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "transcript_fetch_error": {
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "$defs": {
