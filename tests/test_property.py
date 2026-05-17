@@ -102,15 +102,31 @@ class TestSanitizeStringProperties:
 
 
 class TestSanitizeLinkProperties:
+    TRACKING_QUERY_KEYS = frozenset(
+        {"utm_source", "utm_medium", "utm_campaign", "tracking", "referrer"}
+    )
+
     @given(path=st.text(
         alphabet=st.characters(whitelist_categories=("L", "N"), whitelist_characters="/-_"),
         min_size=0,
         max_size=50,
     ))
     @settings(max_examples=100)
-    def test_never_adds_tracking_params(self, path):
+    def test_path_segments_may_contain_tracking_like_names(self, path):
+        """sanitize_link strips query keys only; path segments are left unchanged."""
         url = f"https://example.com/{path}"
         result = HtmlFetcher.sanitize_link(url)
         assert result is not None
-        for param in ("utm_source", "utm_medium", "utm_campaign", "tracking", "referrer"):
-            assert param not in result
+        assert result.startswith("https://example.com/")
+
+    @given(tracking_key=st.sampled_from(sorted(TRACKING_QUERY_KEYS)))
+    @settings(max_examples=50)
+    def test_strips_tracking_query_parameters(self, tracking_key):
+        from urllib.parse import parse_qs, urlparse
+
+        url = f"https://example.com/article?{tracking_key}=noise&keep=1"
+        result = HtmlFetcher.sanitize_link(url)
+        assert result is not None
+        query = parse_qs(urlparse(result).query)
+        assert tracking_key not in query
+        assert "keep" in query
