@@ -2,6 +2,11 @@
 
 n8n orchestrates the crawler flow: sources live in a Data Table, intermediate state lives in Data Tables, AI Nodes create summaries and categories, and Python Code nodes call the portable `tkcrawler.steps` functions.
 
+## Python version
+
+The `tkcrawler` package requires **Python 3.11 or newer** (`requires-python` in `pyproject.toml`).
+Rebuild or upgrade the n8n Python task-runner image after pulling library changes that raise the minimum version.
+
 ## Quick Start
 
 1. Create Data Tables, see `docs/DATA_TABLES.md`.

@@ -2,6 +2,7 @@
 
 ## Important
 
+- TopicKnowledgeCrawler requires **Python 3.11+** (`pyproject.toml`). Upgrade the task-runner image before `pip install -e`.
 - The variable is `N8N_RUNNERS_EXTERNAL_ALLOW` with plural `RUNNERS`.
 - The list contains top-level module names, not full import paths.
 - With `pip install -e .` in the runner image, `tkcrawler` is a normal site package. Code nodes do not need `sys.path` changes.

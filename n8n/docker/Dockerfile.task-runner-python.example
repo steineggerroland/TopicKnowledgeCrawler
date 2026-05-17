@@ -6,6 +6,8 @@
 #
 # Optional: instead of COPY, set build args and enable the GIT lines below (network during build).
 
+# TopicKnowledgeCrawler requires Python >= 3.11 (see pyproject.toml).
+# Confirm the n8n task-runner image ships a compatible Python before deploying.
 FROM n8nio/runners:stable
 # alpine 3.22, chromium 142.x — puppeteer compatibility
 # https://pkgs.alpinelinux.org/packages?name=chromium&branch=v3.22

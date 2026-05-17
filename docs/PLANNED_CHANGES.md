@@ -1,5 +1,7 @@
 # Planned Changes
 
+> **Archive.** For current architecture and workflow, use [`TARGET_ARCHITECTURE.md`](TARGET_ARCHITECTURE.md) and [`WORKFLOW_DIAGRAM.md`](WORKFLOW_DIAGRAM.md). This file records earlier migration rationale only.
+
 This is a historical planning document. The current implementation lives under `src/tkcrawler`, production n8n orchestration uses `tkcrawler.steps`, and the plain Python reference flow is `tkcrawler.pipeline`.
 
 ## Current State
