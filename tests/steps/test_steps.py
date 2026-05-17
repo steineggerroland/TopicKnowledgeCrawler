@@ -4,6 +4,9 @@ import subprocess
 import sys
 from unittest.mock import Mock, patch
 
+import pytest
+
+from tkcrawler._runtime import StepError
 from tkcrawler.steps.analyze_source import analyze_source_item, analyze_source_step
 from tkcrawler.steps.apply_html_analysis import (
     apply_html_analysis_item,
@@ -938,6 +941,73 @@ def test_list_candidates_html_passes_fair_contact_headers(mock_fetch):
             "X-Infl0-Crawler": "infl0",
         },
     )
+
+
+@patch(
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
+    return_value="<html><body><article><a href='/a1'>Article 1</a></article></body></html>",
+)
+def test_list_candidates_html_rejects_invalid_article_selector(mock_fetch):
+    with pytest.raises(StepError) as exc_info:
+        list_candidates_items(
+            {
+                "crawl_key": "https://example.com/articles",
+                "type": "html",
+                "url": "https://example.com/articles",
+                "configuration": {
+                    "article_selector": "article[",
+                    "main_page_anchor_selector": "a",
+                },
+            }
+        )
+
+    assert exc_info.value.code == "invalid_configuration"
+    assert "Invalid HTML article selector" in exc_info.value.message
+
+
+@patch(
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
+    return_value="<html><body><article><a href='/a1'>Article 1</a></article></body></html>",
+)
+def test_list_candidates_html_rejects_invalid_anchor_selector(mock_fetch):
+    with pytest.raises(StepError) as exc_info:
+        list_candidates_items(
+            {
+                "crawl_key": "https://example.com/articles",
+                "type": "html",
+                "url": "https://example.com/articles",
+                "configuration": {
+                    "article_selector": "article",
+                    "main_page_anchor_selector": "a[",
+                },
+            }
+        )
+
+    assert exc_info.value.code == "invalid_configuration"
+    assert "Invalid HTML anchor selector" in exc_info.value.message
+
+
+@patch(
+    "tkcrawler.candidates.html.HtmlFetcher._fetch_html",
+    return_value="<html><body><main><p>Layout changed.</p></main></body></html>",
+)
+def test_validate_source_configuration_marks_changed_html_structure_invalid(mock_fetch):
+    out = validate_source_configuration_item(
+        {
+            "crawl_key": "https://example.com/articles",
+            "type": "html",
+            "url": "https://example.com/articles",
+            "configuration_json": json.dumps(
+                {"article_selector": "article", "main_page_anchor_selector": "a"}
+            ),
+        },
+        {"now": "2026-05-04T12:00:00+00:00"},
+    )
+
+    assert out["source_status"] == "configuration_invalid"
+    assert out["configuration_status"] == "invalid"
+    assert out["sample_candidate_count"] == 0
+    assert out["configuration_error"] == "HTML configuration did not find candidates"
 
 
 @patch("tkcrawler.steps.validate_source_configuration.list_candidates_items")

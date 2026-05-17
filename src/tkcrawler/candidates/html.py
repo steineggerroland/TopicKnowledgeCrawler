@@ -48,10 +48,13 @@ def _html_title(block: Any, anchor: Any) -> str | None:
 
 
 def _html_anchor(block: Any, anchor_selector: str) -> Any:
-    if block.name == "a" and block.get("href"):
-        if not anchor_selector or block.select(anchor_selector) or _matches_selector(block, anchor_selector):
-            return block
-    return block.select_one(anchor_selector)
+    try:
+        if block.name == "a" and block.get("href"):
+            if not anchor_selector or block.select(anchor_selector) or _matches_selector(block, anchor_selector):
+                return block
+        return block.select_one(anchor_selector)
+    except Exception as exc:
+        raise StepError("invalid_configuration", f"Invalid HTML anchor selector: {anchor_selector}") from exc
 
 
 def _matches_selector(element: Any, selector: str) -> bool:
@@ -59,6 +62,13 @@ def _matches_selector(element: Any, selector: str) -> bool:
         return bool(element.parent and element in element.parent.select(selector))
     except Exception:
         return False
+
+
+def _select_blocks(soup: BeautifulSoup, selector: str) -> list[Any]:
+    try:
+        return list(soup.select(selector))
+    except Exception as exc:
+        raise StepError("invalid_configuration", f"Invalid HTML article selector: {selector}") from exc
 
 
 def build_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
@@ -75,7 +85,7 @@ def build_html_candidates(row: Mapping[str, Any]) -> list[dict[str, Any]]:
 
     html = HtmlFetcher._fetch_html(url, headers=request_headers(row))
     soup = BeautifulSoup(html, "html.parser")
-    blocks = soup.select(article_selector)
+    blocks = _select_blocks(soup, article_selector)
     max_entries = max_candidates(row)
     if max_entries and max_entries > 0:
         blocks = blocks[:max_entries]
