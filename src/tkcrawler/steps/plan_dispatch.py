@@ -6,6 +6,7 @@ from typing import Any
 
 from tkcrawler.enums import ConfigurationStatus, CrawlStatus, SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
+from tkcrawler.types import PlanDispatchItem
 
 DEFAULT_POLICY = {
     "crawl_interval_minutes": 180,
@@ -102,7 +103,7 @@ def _parse_http_dt(value: Any) -> datetime | None:
     return dt
 
 
-def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def plan_dispatch_item(row: Mapping[str, Any], context: Mapping[str, Any] | None = None) -> PlanDispatchItem:
     context = context or {}
     now = _parse_dt(context.get("now")) or datetime.now(UTC)
     dispatch_mode = str(context.get("dispatch_mode") or "scheduled")

@@ -5,11 +5,12 @@ from typing import Any
 
 from tkcrawler.infl0_payload import build_ingest_body
 from tkcrawler.steps._runtime import StepError, ok, split_input
+from tkcrawler.types import BuildIngestBodyItem
 
 ENRICHMENT_FIELDS = ("teaser", "summary_long", "category", "tags", "seriousness_rating")
 
 
-def build_ingest_body_item(row: Mapping[str, Any]) -> dict[str, Any]:
+def build_ingest_body_item(row: Mapping[str, Any]) -> BuildIngestBodyItem:
     crawl_key = row.get("crawl_key") or row.get("crawlKey")
     if not crawl_key:
         raise StepError("missing_crawl_key", "Item needs crawl_key")

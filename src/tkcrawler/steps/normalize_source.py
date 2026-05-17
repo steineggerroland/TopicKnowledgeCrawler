@@ -7,6 +7,7 @@ from typing import Any
 from tkcrawler.crawl_key import normalize_feed_url
 from tkcrawler.enums import SourceStatus, SourceType
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
+from tkcrawler.types import NormalizedSourceItem
 
 
 def _first_str(row: Mapping[str, Any], *names: str) -> str:
@@ -17,7 +18,7 @@ def _first_str(row: Mapping[str, Any], *names: str) -> str:
     return ""
 
 
-def normalize_source_item(row: Mapping[str, Any]) -> dict[str, Any]:
+def normalize_source_item(row: Mapping[str, Any]) -> NormalizedSourceItem:
     row = _source_row(row)
     url = _first_str(row, "url", "feedUrl")
     if not url:

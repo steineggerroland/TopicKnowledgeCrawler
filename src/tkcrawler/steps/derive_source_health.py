@@ -11,9 +11,10 @@ from tkcrawler.enums import (
     SourceStatus,
 )
 from tkcrawler.steps._runtime import StepError, ok, parse_json_object, split_input
+from tkcrawler.types import SourceHealthItem
 
 
-def derive_source_health_item(row: Mapping[str, Any]) -> dict[str, Any]:
+def derive_source_health_item(row: Mapping[str, Any]) -> SourceHealthItem:
     detected = _parse_optional_json_object(row.get("detected_policy_json", row.get("detected_policy")), field="detected_policy_json")
     status, reason = _health(row, detected)
     attention, attention_reason = _operator_attention(row, detected, status, reason)

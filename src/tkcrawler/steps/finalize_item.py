@@ -5,9 +5,10 @@ from typing import Any
 
 from tkcrawler.infl0_payload import finalize_entry_metadata
 from tkcrawler.steps._runtime import StepError, ok, split_input
+from tkcrawler.types import FinalizedItem
 
 
-def finalize_item(row: Mapping[str, Any]) -> dict[str, Any]:
+def finalize_item(row: Mapping[str, Any]) -> FinalizedItem:
     article = row.get("article")
     if not isinstance(article, Mapping):
         raise StepError("missing_article", "Item needs article object")
