@@ -1,6 +1,6 @@
 # Gleiche Basis wie die Step-Pipeline; im n8n-Container per pip install -e installieren.
 # Requires Python >= 3.11 (see pyproject.toml). Rebuild the task-runner image after upgrades.
-beautifulsoup4==4.14.3
+beautifulsoup4==4.15.0
 feedparser==6.0.12
 requests==2.33.1
 tldextract==5.3.1
